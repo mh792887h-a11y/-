@@ -8,6 +8,7 @@ import com.example.data.entity.AuditLogEntity
 import com.example.data.entity.CashMovementEntity
 import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.DebtEntity
+import com.example.data.entity.DirectorPaymentEntity
 import com.example.data.entity.ExpenseEntity
 import com.example.data.entity.FeeSettingEntity
 import com.example.data.entity.IncomeEntity
@@ -15,24 +16,31 @@ import com.example.data.entity.TransactionEntity
 import com.example.data.entity.UserEntity
 import com.example.data.repository.CivilFundRepository
 import com.example.util.HijriDateUtil
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 enum class AppScreen(val titleArabic: String) {
     DASHBOARD("الرئيسية"),
+    DAILY_SHEET("كشف الاستمارات"),
+    DIRECTOR_SHARE("حق الإدارة"),
+    CASH_FUND("الصندوق واليومية"),
+    SETTINGS("الإعدادات"),
+    // Preserved for backwards compatibility
     OPERATIONS("العمليات"),
     DAILY("اليومية"),
-    CASH_FUND("الصندوق"),
-    INCOME_EXPENSE_DEBT("الدخل والخرج والديون"),
-    REPORTS("التقارير"),
-    SETTINGS("الإعدادات")
+    INCOME_EXPENSE_DEBT("المالية"),
+    REPORTS("التقارير")
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CivilFundViewModel(application: Application) : AndroidViewModel(application) {
 
     private val db = AppDatabase.getDatabase(application)
@@ -58,6 +66,9 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _showSellFormModal = MutableStateFlow(false)
     val showSellFormModal: StateFlow<Boolean> = _showSellFormModal.asStateFlow()
+
+    private val _showPayDirectorModal = MutableStateFlow(false)
+    val showPayDirectorModal: StateFlow<Boolean> = _showPayDirectorModal.asStateFlow()
 
     private val _showAddExpenseModal = MutableStateFlow(false)
     val showAddExpenseModal: StateFlow<Boolean> = _showAddExpenseModal.asStateFlow()
@@ -91,6 +102,37 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _showAboutModal = MutableStateFlow(false)
     val showAboutModal: StateFlow<Boolean> = _showAboutModal.asStateFlow()
+
+    // Date selection for Daily Sheet (عرض جميع الأيام)
+    private val _selectedReportDate = MutableStateFlow(todayDate)
+    val selectedReportDate: StateFlow<String> = _selectedReportDate.asStateFlow()
+
+    val allTransactionDates: StateFlow<List<String>> = repository.allTransactionDates
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), listOf(todayDate))
+
+    val selectedDateTransactions: StateFlow<List<TransactionEntity>> = _selectedReportDate
+        .flatMapLatest { date -> repository.getTransactionsByDate(date) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val selectedDateClosing: StateFlow<DailyClosingEntity?> = _selectedReportDate
+        .flatMapLatest { date -> repository.getDailyClosing(date) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    // Director Share (حق الإدارة - 200 ريال عن كل استمارة جديد)
+    val allDirectorPayments: StateFlow<List<DirectorPaymentEntity>> = repository.allDirectorPayments
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val totalDirectorEarned: StateFlow<Double> = repository.totalDirectorEarnedFlow
+        .map { it ?: 0.0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val totalDirectorPaid: StateFlow<Double> = repository.totalDirectorPaidFlow
+        .map { it ?: 0.0 }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    val directorRemaining: StateFlow<Double> = combine(totalDirectorEarned, totalDirectorPaid) { earned, paid ->
+        (earned - paid).coerceAtLeast(0.0)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     // Search & Filter state in Operations
     val searchQuery = MutableStateFlow("")
@@ -232,8 +274,34 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         }
     }
 
+    fun setSelectedReportDate(date: String) {
+        _selectedReportDate.value = date
+    }
+
+    fun showPayDirector(show: Boolean) {
+        _showPayDirectorModal.value = show
+    }
+
+    fun payDirector(amount: Double, notes: String?) {
+        if (amount <= 0) {
+            _snackbarMessage.value = "يرجى إدخال مبلغ صحيح للصرف."
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.payDirector(amount, notes)
+            result.onSuccess {
+                _showPayDirectorModal.value = false
+                _snackbarMessage.value = "تمت محاسبة المدير وصرف مبلغ $amount ريال بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر صرف المبلغ للمدير."
+            }
+        }
+    }
+
     fun sellForm(
         citizenName: String,
+        formNumber: String,
+        recordNumber: String,
         formTypeNameArabic: String,
         gender: String,
         notes: String?
@@ -242,8 +310,12 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
             _snackbarMessage.value = "يرجى كتابة اسم المواطن رباعي."
             return
         }
+        if (formNumber.isBlank() || recordNumber.isBlank()) {
+            _snackbarMessage.value = "يرجى تسجيل رقم الاستمارة ورقم القيد بخاناتهما."
+            return
+        }
         viewModelScope.launch {
-            val result = repository.sellForm(citizenName, formTypeNameArabic, gender, notes)
+            val result = repository.sellForm(citizenName, formNumber, recordNumber, formTypeNameArabic, gender, notes)
             result.onSuccess { tx ->
                 _showSellFormModal.value = false
                 _lastSavedReceipt.value = tx

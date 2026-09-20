@@ -11,6 +11,7 @@ import com.example.data.entity.CashMovementEntity
 import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.DebtEntity
 import com.example.data.entity.DebtPaymentEntity
+import com.example.data.entity.DirectorPaymentEntity
 import com.example.data.entity.ExpenseEntity
 import com.example.data.entity.FeeSettingEntity
 import com.example.data.entity.IncomeEntity
@@ -47,6 +48,15 @@ interface TransactionDao {
 
     @Query("SELECT * FROM transactions WHERE id = :id")
     suspend fun getTransactionById(id: Long): TransactionEntity?
+
+    @Query("SELECT DISTINCT gregorianDate FROM transactions ORDER BY gregorianDate DESC")
+    fun getAllTransactionDates(): Flow<List<String>>
+
+    @Query("SELECT SUM(directorateShare) FROM transactions WHERE status = 'ACTIVE'")
+    fun getTotalDirectorShareFlow(): Flow<Double?>
+
+    @Query("SELECT SUM(directorateShare) FROM transactions WHERE status = 'ACTIVE'")
+    suspend fun getTotalDirectorShareSync(): Double?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: TransactionEntity): Long
@@ -219,3 +229,22 @@ interface AppSettingDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun setSetting(setting: AppSettingEntity)
 }
+
+@Dao
+interface DirectorPaymentDao {
+    @Query("SELECT * FROM director_payments ORDER BY id DESC")
+    fun getAllPayments(): Flow<List<DirectorPaymentEntity>>
+
+    @Query("SELECT * FROM director_payments WHERE gregorianDate = :date ORDER BY id DESC")
+    fun getPaymentsByDate(date: String): Flow<List<DirectorPaymentEntity>>
+
+    @Query("SELECT SUM(amount) FROM director_payments")
+    fun getTotalPaidFlow(): Flow<Double?>
+
+    @Query("SELECT SUM(amount) FROM director_payments")
+    suspend fun getTotalPaidSync(): Double?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(payment: DirectorPaymentEntity): Long
+}
+

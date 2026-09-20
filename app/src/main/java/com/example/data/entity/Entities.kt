@@ -40,12 +40,14 @@ data class TransactionEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val receiptNumber: String,        // e.g. "20260920-0001"
     val citizenName: String,          // e.g. "محمد أحمد علي"
+    val formNumber: String = "",      // رقم الاستمارة
+    val recordNumber: String = "",    // رقم القيد
     val transactionType: String,      // "جديد", "تجديد", "بدل فاقد", "بدل تالف"
     val gender: String,               // "ذكر", "أنثى"
     val salePrice: Double,            // 4500
     val stateShare: Double,           // 3750
-    val directorateShare: Double,     // 200
-    val fundShare: Double,            // 550
+    val directorateShare: Double,     // 200 (حق المدير/الإدارة)
+    val fundShare: Double,            // 550 (دخل الصندوق الصافي)
     val gregorianDate: String,        // YYYY-MM-DD
     val hijriDate: String,            // e.g. "8 ربيع الأول 1448 هـ"
     val timeString: String,           // e.g. "10:30 ص"
@@ -188,3 +190,16 @@ data class AppSettingEntity(
     @PrimaryKey val key: String,
     val value: String
 )
+
+@Entity(tableName = "director_payments", indices = [Index(value = ["gregorianDate"])])
+data class DirectorPaymentEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val amount: Double,               // المبلغ المصروف للمدير
+    val gregorianDate: String,        // YYYY-MM-DD
+    val hijriDate: String,
+    val timeString: String,
+    val notes: String? = null,        // ملاحظات أو رقم السند
+    val paidByName: String = "أمين الصندوق",
+    val timestamp: Long = System.currentTimeMillis()
+)
+

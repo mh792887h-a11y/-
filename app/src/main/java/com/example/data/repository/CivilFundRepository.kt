@@ -7,6 +7,7 @@ import com.example.data.entity.CashMovementEntity
 import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.DebtEntity
 import com.example.data.entity.DebtPaymentEntity
+import com.example.data.entity.DirectorPaymentEntity
 import com.example.data.entity.ExpenseEntity
 import com.example.data.entity.FeeSettingEntity
 import com.example.data.entity.IncomeEntity
@@ -32,6 +33,10 @@ class CivilFundRepository(private val db: AppDatabase) {
     val allClosings: Flow<List<DailyClosingEntity>> = db.dailyClosingDao().getAllClosings()
     val allAuditLogs: Flow<List<AuditLogEntity>> = db.auditLogDao().getAllLogs()
     val allUsers: Flow<List<UserEntity>> = db.userDao().getAllUsers()
+    val allDirectorPayments: Flow<List<DirectorPaymentEntity>> = db.directorPaymentDao().getAllPayments()
+    val allTransactionDates: Flow<List<String>> = db.transactionDao().getAllTransactionDates()
+    val totalDirectorEarnedFlow: Flow<Double?> = db.transactionDao().getTotalDirectorShareFlow()
+    val totalDirectorPaidFlow: Flow<Double?> = db.directorPaymentDao().getTotalPaidFlow()
 
     fun getTransactionsByDate(date: String): Flow<List<TransactionEntity>> =
         db.transactionDao().getTransactionsByDate(date)
@@ -84,6 +89,8 @@ class CivilFundRepository(private val db: AppDatabase) {
      */
     suspend fun sellForm(
         citizenName: String,
+        formNumber: String = "",
+        recordNumber: String = "",
         formTypeNameArabic: String, // "جديد", "تجديد", "بدل فاقد", "بدل تالف"
         gender: String, // "ذكر", "أنثى"
         notes: String? = null
@@ -125,6 +132,8 @@ class CivilFundRepository(private val db: AppDatabase) {
         val tx = TransactionEntity(
             receiptNumber = receiptNumber,
             citizenName = citizenName.trim(),
+            formNumber = formNumber.trim(),
+            recordNumber = recordNumber.trim(),
             transactionType = formTypeNameArabic,
             gender = gender,
             salePrice = feeSetting.salePrice,
@@ -143,16 +152,22 @@ class CivilFundRepository(private val db: AppDatabase) {
         val txId = db.transactionDao().insert(tx)
         val savedTx = tx.copy(id = txId)
 
-        // Add cash movement
+        // Add cash movement: net gain for the fund (الكسب الصافي للصندوق مثلاً 550 للاستمارة الجديد)
         val latestMovement = db.cashMovementDao().getLatestMovement()
         val currentBalance = latestMovement?.balanceAfter ?: 0.0
-        val newBalance = currentBalance + feeSetting.salePrice
+        val newBalance = currentBalance + feeSetting.fundShare
+
+        val detailsText = buildString {
+            append("دخل صافي للصندوق (استمارة $formTypeNameArabic) - $citizenName")
+            if (formNumber.isNotBlank()) append(" | استمارة: $formNumber")
+            if (recordNumber.isNotBlank()) append(" | قيد: $recordNumber")
+        }
 
         db.cashMovementDao().insert(
             CashMovementEntity(
-                movementType = "بيع استمارة",
-                statement = "بيع استمارة $formTypeNameArabic - $citizenName (إيصال $receiptNumber)",
-                amountIn = feeSetting.salePrice,
+                movementType = "دخل استمارة",
+                statement = detailsText,
+                amountIn = feeSetting.fundShare,
                 amountOut = 0.0,
                 balanceAfter = newBalance,
                 gregorianDate = today,
@@ -169,8 +184,8 @@ class CivilFundRepository(private val db: AppDatabase) {
                 performedBy = "${user.fullName} (${user.role})",
                 gregorianDate = today,
                 hijriDate = hijri,
-                newValue = "${feeSetting.salePrice} ريال",
-                details = "تسجيل استمارة $formTypeNameArabic للمواطن $citizenName برقم $receiptNumber"
+                newValue = "${feeSetting.fundShare} ريال (صافي الصندوق)",
+                details = "تسجيل استمارة $formTypeNameArabic للمواطن $citizenName - استمارة: $formNumber - قيد: $recordNumber"
             )
         )
 
@@ -207,17 +222,17 @@ class CivilFundRepository(private val db: AppDatabase) {
         )
         db.transactionDao().update(updatedTx)
 
-        // Cash reversal movement
+        // Cash reversal movement for fund share
         val latestMovement = db.cashMovementDao().getLatestMovement()
         val currentBalance = latestMovement?.balanceAfter ?: 0.0
-        val newBalance = currentBalance - tx.salePrice
+        val newBalance = currentBalance - tx.fundShare
 
         db.cashMovementDao().insert(
             CashMovementEntity(
                 movementType = "إلغاء عملية",
-                statement = "إلغاء إيصال ${tx.receiptNumber} (${tx.citizenName}) - سبب: ${reason.trim()}",
+                statement = "إلغاء استمارة ${tx.citizenName} (إيصال ${tx.receiptNumber}) - سبب: ${reason.trim()}",
                 amountIn = 0.0,
-                amountOut = tx.salePrice,
+                amountOut = tx.fundShare,
                 balanceAfter = newBalance,
                 gregorianDate = today,
                 hijriDate = hijri,
@@ -697,7 +712,8 @@ class CivilFundRepository(private val db: AppDatabase) {
         val otherIncomeTotal = otherIncomes.filter { it.category != "تسديد دين" }.sumOf { it.amount }
         val debtPaidTotal = otherIncomes.filter { it.category == "تسديد دين" }.sumOf { it.amount }
 
-        val totalIncome = formSalesIncome + otherIncomeTotal + debtPaidTotal
+        // Total fund income is the net fund share + other income + debt repayment
+        val totalIncome = totalFundShare + otherIncomeTotal + debtPaidTotal
         val netToday = totalIncome - totalExpenses
         val expectedBalance = closing.openingBalance + netToday
         val diff = closing.actualBalance - expectedBalance
@@ -853,5 +869,84 @@ class CivilFundRepository(private val db: AppDatabase) {
         } catch (e: Exception) {
             Result.failure(Exception("ملف النسخة الاحتياطية غير صالح: ${e.localizedMessage}"))
         }
+    }
+
+    /**
+     * Records a payment to the Director from their accumulated share (حق الإدارة)
+     */
+    suspend fun payDirector(
+        amount: Double,
+        notes: String? = null
+    ): Result<DirectorPaymentEntity> = withContext(Dispatchers.IO) {
+        if (amount <= 0) {
+            return@withContext Result.failure(Exception("يرجى إدخال مبلغ صحيح."))
+        }
+
+        val today = HijriDateUtil.getTodayGregorianString()
+        val hijri = HijriDateUtil.getHijriDate().formatted
+        val time = HijriDateUtil.getNowTimeString()
+        val user = getCurrentUser()
+
+        val payment = DirectorPaymentEntity(
+            amount = amount,
+            gregorianDate = today,
+            hijriDate = hijri,
+            timeString = time,
+            notes = notes?.trim(),
+            paidByName = user.fullName
+        )
+        val id = db.directorPaymentDao().insert(payment)
+        val saved = payment.copy(id = id)
+
+        // Record cash movement (خرج من الصندوق للمدير)
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance - amount
+
+        val noteStr = if (!notes.isNullOrBlank()) " ($notes)" else ""
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "محاسبة المدير",
+                statement = "صرف دفعة للمدير من حق الإدارة - $amount ريال$noteStr",
+                amountIn = 0.0,
+                amountOut = amount,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = id
+            )
+        )
+
+        // Record as an expense so daily closing accounts for it
+        db.expenseDao().insert(
+            ExpenseEntity(
+                statement = "صرف دفعة للمدير من مستحقات حق الإدارة$noteStr",
+                amount = amount,
+                withWhom = "مدير الإدارة",
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                notes = noteStr.ifBlank { null },
+                createdByUserId = user.id,
+                createdByName = user.fullName,
+                status = "ACTIVE"
+            )
+        )
+
+        // Audit Log
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "محاسبة المدير",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = today,
+                hijriDate = hijri,
+                newValue = "$amount ريال",
+                details = "صرف دفعة لمدير الإدارة بمبلغ $amount ريال$noteStr"
+            )
+        )
+
+        recalculateDailyClosing(today)
+        Result.success(saved)
     }
 }

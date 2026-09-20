@@ -38,6 +38,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.entity.TransactionEntity
+import com.example.ui.theme.ExpenseRed
+import com.example.ui.theme.IncomeGreen
+import com.example.ui.theme.InfoBlue
 import com.example.data.entity.UserEntity
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.ExpenseRedContainer
@@ -372,6 +376,111 @@ fun OperationActionButton(
                         color = if (isPrimary) NavyPrimary else Color.White
                     )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Reusable card displaying an individual transaction in list views.
+ */
+@Composable
+fun TransactionCard(
+    tx: TransactionEntity,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val isCancelled = tx.status == "CANCELLED"
+    val badgeColor = when (tx.transactionType) {
+        "جديد" -> Color(0xFF16A34A)
+        "تجديد" -> Color(0xFF0284C7)
+        "بدل فاقد" -> Color(0xFFD97706)
+        "بدل تالف" -> Color(0xFF9333EA)
+        else -> NavyPrimary
+    }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .testTag("tx_card_${tx.id}"),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isCancelled) Color(0xFFFEF2F2) else Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isCancelled) ExpenseRed else badgeColor)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (isCancelled) "ملغية" else tx.transactionType,
+                            color = Color.White,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = tx.citizenName,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = if (isCancelled) Color(0xFF94A3B8) else Color(0xFF1E293B)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (tx.formNumber.isNotBlank()) {
+                        Text(
+                            text = "استمارة: ${tx.formNumber}",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                    if (tx.recordNumber.isNotBlank()) {
+                        Text(
+                            text = "قيد: ${tx.recordNumber}",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                    Text(
+                        text = tx.timeString,
+                        fontSize = 11.sp,
+                        color = Color(0xFF94A3B8)
+                    )
+                }
+            }
+
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = "${CurrencyUtil.formatNumber(tx.salePrice)} ر.ي",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = if (isCancelled) ExpenseRed else IncomeGreen
+                )
+                Text(
+                    text = tx.receiptNumber,
+                    fontSize = 10.sp,
+                    color = Color(0xFF94A3B8)
+                )
             }
         }
     }

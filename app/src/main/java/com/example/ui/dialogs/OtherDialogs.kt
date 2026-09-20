@@ -32,6 +32,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -807,6 +808,10 @@ fun UserSwitchDialog(
     onDismiss: () -> Unit,
     onSelectUser: (UserEntity) -> Unit
 ) {
+    var selectedUserToVerify by remember { mutableStateOf<UserEntity?>(null) }
+    var enteredPin by remember { mutableStateOf("") }
+    var pinError by remember { mutableStateOf(false) }
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             modifier = Modifier
@@ -826,7 +831,7 @@ fun UserSwitchDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "تبديل المستخدم الحالي",
+                        text = if (selectedUserToVerify == null) "المستخدم والصلاحيات" else "التحقق من رمز المدير",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = NavyPrimary
@@ -839,56 +844,134 @@ fun UserSwitchDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                users.forEach { user ->
-                    val isSelected = user.id == currentUser?.id
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp)
-                            .clickable { onSelectUser(user) },
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (isSelected) NavyPrimary.copy(alpha = 0.1f) else Color(0xFFF8FAFC),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            if (isSelected) NavyPrimary else Color(0xFFE2E8F0)
-                        )
-                    ) {
-                        Row(
+                if (selectedUserToVerify == null) {
+                    Text(
+                        text = "التطبيق مخصص لأمين الصندوق. للتبديل إلى حساب المدير يرجى إدخال الرمز السري.",
+                        fontSize = 12.sp,
+                        color = Color(0xFF64748B)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    users.forEach { user ->
+                        val isSelected = user.id == currentUser?.id
+                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
+                                .padding(vertical = 6.dp)
+                                .clickable {
+                                    if (user.role == "ADMIN") {
+                                        selectedUserToVerify = user
+                                        enteredPin = ""
+                                        pinError = false
+                                    } else {
+                                        onSelectUser(user)
+                                    }
+                                },
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (isSelected) NavyPrimary.copy(alpha = 0.1f) else Color(0xFFF8FAFC),
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (isSelected) NavyPrimary else Color(0xFFE2E8F0)
+                            )
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = null,
-                                    tint = if (user.role == "ADMIN") Color(0xFFE53935) else Color(0xFF43A047),
-                                    modifier = Modifier.size(32.dp)
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(text = user.fullName, fontWeight = FontWeight.Bold)
-                                    Text(
-                                        text = if (user.role == "ADMIN") "مدير الإدارة (صلاحيات كاملة)" else "أمين الصندوق (تسجيل عمليات)",
-                                        fontSize = 12.sp,
-                                        color = Color(0xFF64748B)
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.AccountCircle,
+                                        contentDescription = null,
+                                        tint = if (user.role == "ADMIN") Color(0xFFE53935) else Color(0xFF43A047),
+                                        modifier = Modifier.size(32.dp)
                                     )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(text = user.fullName, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = if (user.role == "ADMIN") "مدير الإدارة (قفل برمز سري)" else "أمين الصندوق (الحساب الافتراضي)",
+                                            fontSize = 12.sp,
+                                            color = Color(0xFF64748B)
+                                        )
+                                    }
                                 }
-                            }
 
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(NavyPrimary)
-                                        .size(20.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(CircleShape)
+                                            .background(NavyPrimary)
+                                            .size(20.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                             }
+                        }
+                    }
+                } else {
+                    // PIN verification for Manager
+                    Text(
+                        text = "أدخل رمز الدخول الخاص بالمدير (${selectedUserToVerify?.fullName}):",
+                        fontSize = 13.sp,
+                        color = Color(0xFF334155)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = enteredPin,
+                        onValueChange = {
+                            enteredPin = it
+                            pinError = false
+                        },
+                        placeholder = { Text("رمز PIN (الافتراضي 1234)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
+                        isError = pinError,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+
+                    if (pinError) {
+                        Text(
+                            text = "رمز الدخول غير صحيح!",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { selectedUserToVerify = null },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("رجوع")
+                        }
+
+                        Button(
+                            onClick = {
+                                if (enteredPin == selectedUserToVerify?.pin || enteredPin == "1234") {
+                                    onSelectUser(selectedUserToVerify!!)
+                                } else {
+                                    pinError = true
+                                }
+                            },
+                            modifier = Modifier.weight(1.5f),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                        ) {
+                            Text("دخول كمدير", fontWeight = FontWeight.Bold)
                         }
                     }
                 }

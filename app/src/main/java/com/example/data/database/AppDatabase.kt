@@ -11,6 +11,7 @@ import com.example.data.dao.CashMovementDao
 import com.example.data.dao.DailyClosingDao
 import com.example.data.dao.DebtDao
 import com.example.data.dao.DebtPaymentDao
+import com.example.data.dao.DirectorPaymentDao
 import com.example.data.dao.ExpenseDao
 import com.example.data.dao.FeeSettingDao
 import com.example.data.dao.IncomeDao
@@ -22,6 +23,7 @@ import com.example.data.entity.CashMovementEntity
 import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.DebtEntity
 import com.example.data.entity.DebtPaymentEntity
+import com.example.data.entity.DirectorPaymentEntity
 import com.example.data.entity.ExpenseEntity
 import com.example.data.entity.FeeSettingEntity
 import com.example.data.entity.IncomeEntity
@@ -40,12 +42,13 @@ import kotlinx.coroutines.launch
         ExpenseEntity::class,
         DebtEntity::class,
         DebtPaymentEntity::class,
+        DirectorPaymentEntity::class,
         CashMovementEntity::class,
         DailyClosingEntity::class,
         AuditLogEntity::class,
         AppSettingEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -55,6 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun expenseDao(): ExpenseDao
     abstract fun debtDao(): DebtDao
     abstract fun debtPaymentDao(): DebtPaymentDao
+    abstract fun directorPaymentDao(): DirectorPaymentDao
     abstract fun cashMovementDao(): CashMovementDao
     abstract fun dailyClosingDao(): DailyClosingDao
     abstract fun auditLogDao(): AuditLogDao
@@ -72,6 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "civil_status_fund.db"
                 )
+                    .fallbackToDestructiveMigration()
                     .addCallback(object : Callback() {
                         override fun onCreate(db: SupportSQLiteDatabase) {
                             super.onCreate(db)

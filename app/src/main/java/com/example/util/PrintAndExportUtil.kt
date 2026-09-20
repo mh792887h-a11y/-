@@ -49,12 +49,28 @@ object PrintAndExportUtil {
                         <td>${tx.citizenName}</td>
                     </tr>
                     <tr>
+                        <th>رقم الاستمارة</th>
+                        <td><strong>${tx.formNumber.ifBlank { "-" }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>رقم القيد</th>
+                        <td><strong>${tx.recordNumber.ifBlank { "-" }}</strong></td>
+                    </tr>
+                    <tr>
                         <th>نوع المعاملة</th>
                         <td>استمارة ${tx.transactionType}</td>
                     </tr>
                     <tr>
                         <th>الجنس</th>
                         <td>${tx.gender}</td>
+                    </tr>
+                    <tr>
+                        <th>صافي دخل الصندوق</th>
+                        <td>${CurrencyUtil.formatRiyal(tx.fundShare)}</td>
+                    </tr>
+                    <tr>
+                        <th>حق الإدارة</th>
+                        <td>${CurrencyUtil.formatRiyal(tx.directorateShare)}</td>
                     </tr>
                     <tr>
                         <th>التاريخ الميلادي</th>
@@ -69,11 +85,11 @@ object PrintAndExportUtil {
                         <td>${tx.timeString}</td>
                     </tr>
                     <tr>
-                        <th>الموظف المستلم</th>
+                        <th>أمين الصندوق</th>
                         <td>${tx.createdByName}</td>
                     </tr>
                     <tr class="total">
-                        <th>المبلغ المسدد</th>
+                        <th>المبلغ الإجمالي المسدد</th>
                         <td>${CurrencyUtil.formatRiyal(tx.salePrice)}</td>
                     </tr>
                 </table>
@@ -102,14 +118,14 @@ object PrintAndExportUtil {
             """
             <tr>
                 <td>${index + 1}</td>
-                <td>${tx.receiptNumber}</td>
-                <td>${tx.citizenName}</td>
+                <td><strong>${tx.formNumber.ifBlank { "-" }}</strong></td>
+                <td><strong>${tx.recordNumber.ifBlank { "-" }}</strong></td>
+                <td style="text-align: right; font-weight: bold;">${tx.citizenName}</td>
                 <td>${tx.transactionType}</td>
                 <td>${tx.gender}</td>
                 <td>${CurrencyUtil.formatNumber(tx.salePrice)}</td>
-                <td>${CurrencyUtil.formatNumber(tx.stateShare)}</td>
-                <td>${CurrencyUtil.formatNumber(tx.directorateShare)}</td>
-                <td>${CurrencyUtil.formatNumber(tx.fundShare)}</td>
+                <td style="color: #059669; font-weight: bold;">${CurrencyUtil.formatNumber(tx.fundShare)}</td>
+                <td style="color: #0f172a; font-weight: bold;">${CurrencyUtil.formatNumber(tx.directorateShare)}</td>
                 <td>${tx.timeString}</td>
             </tr>
             """.trimIndent()
@@ -138,7 +154,7 @@ object PrintAndExportUtil {
             <body>
                 <div class="header">
                     <div class="title">الجمهورية اليمنية - $directorateName</div>
-                    <div class="subtitle">تقرير يومية صندوق ومبيعات استمارات الأحوال المدنية</div>
+                    <div class="subtitle">تقرير كشف استمارات ومبيعات الأحوال المدنية</div>
                     <div class="subtitle">التاريخ: ${closing.gregorianDate} م الموافق ${closing.hijriDate}</div>
                 </div>
 
@@ -146,52 +162,50 @@ object PrintAndExportUtil {
                     <tr>
                         <td class="bg-light">رصيد بداية اليوم:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.openingBalance)}</td>
-                        <td class="bg-light">إجمالي مبيعات الاستمارات:</td>
-                        <td>${CurrencyUtil.formatRiyal(closing.totalIncome - closing.otherIncome - closing.debtPaidAmount)}</td>
+                        <td class="bg-light">صافي دخل الصندوق اليوم:</td>
+                        <td>${CurrencyUtil.formatRiyal(closing.totalFundShare)}</td>
                     </tr>
                     <tr>
-                        <td class="bg-light">إجمالي الخرج:</td>
+                        <td class="bg-light">إجمالي الخرج والمصروفات:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.totalExpenses)}</td>
-                        <td class="bg-light">صافي حركة اليوم:</td>
+                        <td class="bg-light">صافي حركة اليومية:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.netToday)}</td>
                     </tr>
                     <tr>
-                        <td class="bg-light">الرصيد المتوقع:</td>
+                        <td class="bg-light">الرصيد المتوقع بالصندوق:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.expectedBalance)}</td>
-                        <td class="bg-light">الرصيد الفعلي:</td>
+                        <td class="bg-light">الرصيد الفعلي الموجود:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.actualBalance)}</td>
                     </tr>
                     <tr>
-                        <td class="bg-light">حالة الصندوق (الفرق):</td>
-                        <td colspan="3">${if (closing.difference == 0.0) "مطابق ✓" else if (closing.difference > 0) "زيادة (+${CurrencyUtil.formatRiyal(closing.difference)})" else "عجز (${CurrencyUtil.formatRiyal(closing.difference)})"}</td>
+                        <td class="bg-light">حالة الصندوق (المطابقة):</td>
+                        <td colspan="3">${if (closing.difference == 0.0) "مطابق تماماً ✓" else if (closing.difference > 0) "زيادة (+${CurrencyUtil.formatRiyal(closing.difference)})" else "عجز (${CurrencyUtil.formatRiyal(closing.difference)})"}</td>
                     </tr>
                     <tr>
                         <td class="bg-light">حق الدولة:</td>
                         <td>${CurrencyUtil.formatRiyal(closing.totalStateShare)}</td>
-                        <td class="bg-light">حصة الإدارة:</td>
+                        <td class="bg-light">حصة الإدارة (المدير):</td>
                         <td>${CurrencyUtil.formatRiyal(closing.totalDirectorateShare)}</td>
                     </tr>
                     <tr>
-                        <td class="bg-light">نصيب الصندوق:</td>
-                        <td>${CurrencyUtil.formatRiyal(closing.totalFundShare)}</td>
-                        <td class="bg-light">إجمالي المعاملات:</td>
-                        <td>${closing.totalTransactions} (ذكور: ${closing.malesCount}، إناث: ${closing.femalesCount})</td>
+                        <td class="bg-light">إجمالي عدد المعاملات:</td>
+                        <td colspan="3">${closing.totalTransactions} معاملة (جديد: ${closing.newCount} | تجديد: ${closing.renewCount} | بدل فاقد: ${closing.lostCount} | بدل تالف: ${closing.damagedCount}) - (ذكور: ${closing.malesCount}، إناث: ${closing.femalesCount})</td>
                     </tr>
                 </table>
 
-                <div style="font-weight: bold; font-size: 13px; margin-top: 10px;">جدول العمليات التفصيلية:</div>
+                <div style="font-weight: bold; font-size: 13px; margin-top: 10px;">كشف الاستمارات والمواطنين المسجلين:</div>
                 <table>
                     <thead>
                         <tr>
                             <th>#</th>
-                            <th>رقم العملية</th>
+                            <th>رقم الاستمارة</th>
+                            <th>رقم القيد</th>
                             <th>اسم المواطن</th>
-                            <th>النوع</th>
+                            <th>نوع المعاملة</th>
                             <th>الجنس</th>
                             <th>المبلغ</th>
-                            <th>حق الدولة</th>
-                            <th>حصة الإدارة</th>
-                            <th>الصندوق</th>
+                            <th>صافي الصندوق</th>
+                            <th>حق الإدارة</th>
                             <th>الوقت</th>
                         </tr>
                     </thead>
@@ -201,7 +215,7 @@ object PrintAndExportUtil {
                 </table>
 
                 <div class="footer">
-                    <div>أمين الصندوق: ${closing.closedByName ?: "المسؤول"} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; مدير الإدارة: __________________</div>
+                    <div>أمين الصندوق: __________________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; مدير الإدارة: __________________</div>
                     <div style="margin-top: 5px; color: #64748b;">برمجة وتصميم محمد هشام الصلاحي</div>
                 </div>
             </body>
@@ -209,6 +223,103 @@ object PrintAndExportUtil {
         """.trimIndent()
 
         printHtml(context, html, "يومية_${closing.gregorianDate}")
+    }
+
+    /**
+     * Prints an official account statement for the Director's share (كشف حساب حق الإدارة)
+     */
+    fun printDirectorStatement(
+        context: Context,
+        directorateName: String,
+        payments: List<com.example.data.entity.DirectorPaymentEntity>,
+        totalEarned: Double,
+        totalPaid: Double,
+        remaining: Double
+    ) {
+        val paymentRows = if (payments.isEmpty()) {
+            """<tr><td colspan="5" style="text-align:center; padding:12px; color:#64748b;">لا توجد دفعات منصرفة حتى الآن</td></tr>"""
+        } else {
+            payments.mapIndexed { index, p ->
+                """
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${CurrencyUtil.formatRiyal(p.amount)}</td>
+                    <td>${p.gregorianDate} م (${p.timeString})</td>
+                    <td>${p.notes ?: "دفعة نقدية"}</td>
+                    <td>${p.paidByName}</td>
+                </tr>
+                """.trimIndent()
+            }.joinToString("\n")
+        }
+
+        val html = """
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <style>
+                    body { font-family: sans-serif; margin: 20px; color: #0f172a; direction: rtl; text-align: right; }
+                    .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 15px; }
+                    .title { font-size: 18px; font-weight: bold; }
+                    .subtitle { font-size: 13px; color: #475569; margin: 3px 0; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    th, td { border: 1px solid #cbd5e1; padding: 7px 8px; text-align: center; font-size: 12px; }
+                    th { background-color: #f1f5f9; font-weight: bold; }
+                    .summary-box { display: flex; justify-content: space-between; border: 1px solid #cbd5e1; padding: 12px; margin-bottom: 15px; background: #f8fafc; border-radius: 8px; }
+                    .summary-item { text-align: center; flex: 1; }
+                    .summary-label { font-size: 11px; color: #475569; }
+                    .summary-val { font-size: 16px; font-weight: bold; margin-top: 4px; }
+                    .footer { margin-top: 30px; border-top: 1px dashed #94a3b8; padding-top: 12px; display: flex; justify-content: space-around; font-size: 12px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="title">الجمهورية اليمنية - $directorateName</div>
+                    <div class="subtitle">كشف حساب مستحقات حق الإدارة (المدير)</div>
+                    <div class="subtitle">تاريخ التقرير: ${HijriDateUtil.getTodayGregorianString()} م</div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-item">
+                        <div class="summary-label">إجمالي المستحق (200 لكل استمارة جديد):</div>
+                        <div class="summary-val" style="color:#0f172a;">${CurrencyUtil.formatRiyal(totalEarned)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">إجمالي ما تم تسليمه (المحاسب به):</div>
+                        <div class="summary-val" style="color:#059669;">${CurrencyUtil.formatRiyal(totalPaid)}</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">المتبقي طرف الصندوق:</div>
+                        <div class="summary-val" style="color:#dc2626;">${CurrencyUtil.formatRiyal(remaining)}</div>
+                    </div>
+                </div>
+
+                <div style="font-weight: bold; font-size: 13px; margin-top: 15px;">سجل الدفعات والمبالغ المسلمة للمدير:</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>المبلغ المسلم</th>
+                            <th>التاريخ والوقت</th>
+                            <th>البيان / ملاحظات</th>
+                            <th>الموظف القائم بالصرف</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        $paymentRows
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    <div>توقيع أمين الصندوق: __________________</div>
+                    <div>توقيع مدير الإدارة المستلم: __________________</div>
+                </div>
+                <div style="text-align:center; font-size:10px; color:#94a3b8; margin-top:15px;">برمجة وتصميم محمد هشام الصلاحي</div>
+            </body>
+            </html>
+        """.trimIndent()
+
+        printHtml(context, html, "كشف_حساب_المدير_${HijriDateUtil.getTodayGregorianString()}")
     }
 
     private fun printHtml(context: Context, html: String, jobName: String) {

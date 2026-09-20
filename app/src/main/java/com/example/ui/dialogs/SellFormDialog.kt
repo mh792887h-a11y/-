@@ -25,10 +25,14 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Print
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -74,9 +78,11 @@ fun SellFormDialog(
     feeSettings: List<FeeSettingEntity>,
     recentCitizenNames: List<String>,
     onDismiss: () -> Unit,
-    onSubmit: (citizenName: String, formType: String, gender: String, notes: String?) -> Unit
+    onSubmit: (citizenName: String, formNumber: String, recordNumber: String, formType: String, gender: String, notes: String?) -> Unit
 ) {
     var citizenName by remember { mutableStateOf("") }
+    var formNumber by remember { mutableStateOf("") }
+    var recordNumber by remember { mutableStateOf("") }
     var selectedType by remember { mutableStateOf("جديد") }
     var selectedGender by remember { mutableStateOf("ذكر") }
     var notes by remember { mutableStateOf("") }
@@ -201,7 +207,59 @@ fun SellFormDialog(
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                // 2. Transaction Type Selection
+                // 2. Form Number & Record Number (Separate boxes as requested)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "رقم الاستمارة *",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = formNumber,
+                            onValueChange = { formNumber = it },
+                            placeholder = { Text("مثال: 10452") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Default.ConfirmationNumber, contentDescription = null, tint = NavyPrimary)
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("form_number_input"),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "رقم القيد *",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = recordNumber,
+                            onValueChange = { recordNumber = it },
+                            placeholder = { Text("مثال: 7890") },
+                            singleLine = true,
+                            leadingIcon = {
+                                Icon(imageVector = Icons.Default.Badge, contentDescription = null, tint = NavyPrimary)
+                            },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("record_number_input"),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 3. Transaction Type Selection
                 Text(
                     text = "نوع المعاملة *",
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
@@ -356,12 +414,12 @@ fun SellFormDialog(
                 // Submit Button with double-click prevention
                 Button(
                     onClick = {
-                        if (!isSubmitting && citizenName.isNotBlank()) {
+                        if (!isSubmitting && citizenName.isNotBlank() && formNumber.isNotBlank() && recordNumber.isNotBlank()) {
                             isSubmitting = true
-                            onSubmit(citizenName, selectedType, selectedGender, notes.ifBlank { null })
+                            onSubmit(citizenName, formNumber, recordNumber, selectedType, selectedGender, notes.ifBlank { null })
                         }
                     },
-                    enabled = !isSubmitting && citizenName.isNotBlank(),
+                    enabled = !isSubmitting && citizenName.isNotBlank() && formNumber.isNotBlank() && recordNumber.isNotBlank(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(54.dp)
@@ -457,9 +515,13 @@ fun ReceiptConfirmationDialog(
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
                         ReceiptRow(label = "اسم المواطن:", value = receipt.citizenName, isBold = true)
+                        ReceiptRow(label = "رقم الاستمارة:", value = receipt.formNumber.ifBlank { "-" }, isBold = true)
+                        ReceiptRow(label = "رقم القيد:", value = receipt.recordNumber.ifBlank { "-" }, isBold = true)
                         ReceiptRow(label = "نوع المعاملة:", value = "استمارة ${receipt.transactionType}")
                         ReceiptRow(label = "الجنس:", value = receipt.gender)
-                        ReceiptRow(label = "المبلغ:", value = CurrencyUtil.formatRiyal(receipt.salePrice), valueColor = IncomeGreen, isBold = true)
+                        ReceiptRow(label = "المبلغ الإجمالي:", value = CurrencyUtil.formatRiyal(receipt.salePrice), isBold = true)
+                        ReceiptRow(label = "دخل الصندوق الصافي:", value = CurrencyUtil.formatRiyal(receipt.fundShare), valueColor = IncomeGreen, isBold = true)
+                        ReceiptRow(label = "حق الإدارة (المدير):", value = CurrencyUtil.formatRiyal(receipt.directorateShare), valueColor = NavyPrimary, isBold = true)
                         HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp), color = Color(0xFFE2E8F0))
                         ReceiptRow(label = "التاريخ الميلادي:", value = receipt.gregorianDate)
                         ReceiptRow(label = "التاريخ الهجري:", value = receipt.hijriDate)

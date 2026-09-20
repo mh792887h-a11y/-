@@ -64,11 +64,14 @@ import com.example.ui.dialogs.AddIncomeDialog
 import com.example.ui.dialogs.CancelTransactionConfirmDialog
 import com.example.ui.dialogs.DateInfoDialog
 import com.example.ui.dialogs.PayDebtDialog
+import com.example.ui.dialogs.PayDirectorDialog
 import com.example.ui.dialogs.ReceiptConfirmationDialog
 import com.example.ui.dialogs.SellFormDialog
 import com.example.ui.dialogs.UserSwitchDialog
 import com.example.ui.screens.CashFundScreen
 import com.example.ui.screens.DailyClosingScreen
+import com.example.ui.screens.DailySheetScreen
+import com.example.ui.screens.DirectorShareScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.IncomeExpenseDebtScreen
 import com.example.ui.screens.OperationsScreen
@@ -110,6 +113,8 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
 
     // Dialog states
     val showSellForm by viewModel.showSellFormModal.collectAsState()
+    val showPayDirector by viewModel.showPayDirectorModal.collectAsState()
+    val directorRemaining by viewModel.directorRemaining.collectAsState()
     val lastReceipt by viewModel.lastSavedReceipt.collectAsState()
     val showAddExpense by viewModel.showAddExpenseModal.collectAsState()
     val showAddIncome by viewModel.showAddIncomeModal.collectAsState()
@@ -166,68 +171,42 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
                 )
 
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.OPERATIONS,
-                    onClick = { viewModel.navigateTo(AppScreen.OPERATIONS) },
-                    icon = { Icon(imageVector = Icons.Default.ListAlt, contentDescription = "العمليات") },
-                    label = { Text("العمليات", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    selected = currentScreen == AppScreen.DAILY_SHEET,
+                    onClick = { viewModel.navigateTo(AppScreen.DAILY_SHEET) },
+                    icon = { Icon(imageVector = Icons.Default.ListAlt, contentDescription = "كشف الاستمارات") },
+                    label = { Text("كشف الاستمارات", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = NavyPrimary,
                         selectedTextColor = NavyPrimary,
                         indicatorColor = NavyPrimary.copy(alpha = 0.15f)
                     ),
-                    modifier = Modifier.testTag("nav_operations")
+                    modifier = Modifier.testTag("nav_daily_sheet")
                 )
 
                 NavigationBarItem(
-                    selected = currentScreen == AppScreen.DAILY,
-                    onClick = { viewModel.navigateTo(AppScreen.DAILY) },
-                    icon = { Icon(imageVector = Icons.Default.Assignment, contentDescription = "اليومية") },
-                    label = { Text("اليومية", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    selected = currentScreen == AppScreen.DIRECTOR_SHARE,
+                    onClick = { viewModel.navigateTo(AppScreen.DIRECTOR_SHARE) },
+                    icon = { Icon(imageVector = Icons.Default.AttachMoney, contentDescription = "حق الإدارة") },
+                    label = { Text("حق الإدارة", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = NavyPrimary,
                         selectedTextColor = NavyPrimary,
                         indicatorColor = NavyPrimary.copy(alpha = 0.15f)
                     ),
-                    modifier = Modifier.testTag("nav_daily")
+                    modifier = Modifier.testTag("nav_director_share")
                 )
 
                 NavigationBarItem(
                     selected = currentScreen == AppScreen.CASH_FUND,
                     onClick = { viewModel.navigateTo(AppScreen.CASH_FUND) },
                     icon = { Icon(imageVector = Icons.Default.AccountBalanceWallet, contentDescription = "الصندوق") },
-                    label = { Text("الصندوق", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
+                    label = { Text("الصندوق واليومية", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = NavyPrimary,
                         selectedTextColor = NavyPrimary,
                         indicatorColor = NavyPrimary.copy(alpha = 0.15f)
                     ),
                     modifier = Modifier.testTag("nav_cash_fund")
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.INCOME_EXPENSE_DEBT,
-                    onClick = { viewModel.navigateTo(AppScreen.INCOME_EXPENSE_DEBT) },
-                    icon = { Icon(imageVector = Icons.Default.AttachMoney, contentDescription = "المالية") },
-                    label = { Text("المالية", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_finance")
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.REPORTS,
-                    onClick = { viewModel.navigateTo(AppScreen.REPORTS) },
-                    icon = { Icon(imageVector = Icons.Default.BarChart, contentDescription = "التقارير") },
-                    label = { Text("التقارير", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_reports")
                 )
 
                 NavigationBarItem(
@@ -245,7 +224,7 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
             }
         },
         floatingActionButton = {
-            if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.OPERATIONS) {
+            if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.DAILY_SHEET) {
                 ExtendedFloatingActionButton(
                     onClick = { viewModel.showSellForm(true) },
                     containerColor = NavyPrimary,
@@ -276,16 +255,18 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
                         closing = todayClosing,
                         todayTransactions = todayTransactions
                     )
+                    AppScreen.DAILY_SHEET -> DailySheetScreen(viewModel = viewModel)
+                    AppScreen.DIRECTOR_SHARE -> DirectorShareScreen(viewModel = viewModel)
+                    AppScreen.CASH_FUND -> CashFundScreen(viewModel = viewModel)
+                    AppScreen.SETTINGS -> SettingsScreen(viewModel = viewModel)
                     AppScreen.OPERATIONS -> OperationsScreen(viewModel = viewModel)
                     AppScreen.DAILY -> DailyClosingScreen(
                         viewModel = viewModel,
                         closing = todayClosing,
                         transactions = todayTransactions
                     )
-                    AppScreen.CASH_FUND -> CashFundScreen(viewModel = viewModel)
                     AppScreen.INCOME_EXPENSE_DEBT -> IncomeExpenseDebtScreen(viewModel = viewModel)
                     AppScreen.REPORTS -> ReportsScreen(viewModel = viewModel)
-                    AppScreen.SETTINGS -> SettingsScreen(viewModel = viewModel)
                 }
             }
         }
@@ -302,8 +283,19 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
             feeSettings = feeSettings,
             recentCitizenNames = recentNames,
             onDismiss = { viewModel.showSellForm(false) },
-            onSubmit = { citizen, type, gender, notes ->
-                viewModel.sellForm(citizen, type, gender, notes)
+            onSubmit = { citizen, formNum, recordNum, type, gender, notes ->
+                viewModel.sellForm(citizen, formNum, recordNum, type, gender, notes)
+            }
+        )
+    }
+
+    // Pay Director Dialog
+    if (showPayDirector) {
+        PayDirectorDialog(
+            currentRemaining = directorRemaining,
+            onDismiss = { viewModel.showPayDirector(false) },
+            onSubmit = { amt, notes ->
+                viewModel.payDirector(amt, notes)
             }
         )
     }
