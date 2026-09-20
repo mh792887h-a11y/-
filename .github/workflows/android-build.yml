@@ -38,6 +38,12 @@ jobs:
             touch .env
           fi
 
+      - name: Ensure google-services.json exists
+        run: |
+          if [ ! -f app/google-services.json ]; then
+            echo '{"project_info":{"project_number":"123456789012","project_id":"civil-fund-app","storage_bucket":"civil-fund-app.appspot.com"},"client":[{"client_info":{"mobilesdk_app_id":"1:123456789012:android:abcdef0123456789abcdef","android_client_info":{"package_name":"com.aistudio.civilfund.ydmxpq"}},"oauth_client":[],"api_key":[{"current_key":"fake_key"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],"configuration_version":"1"}' > app/google-services.json
+          fi
+
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
 
