@@ -1,0 +1,6 @@
+{
+  "name": "صندوق الأحوال المدنية",
+  "description": "نظام إلكتروني احترافي لإدارة صندوق ومبيعات استمارات الأحوال المدنية اليمنية، مخصص لأمين الصندوق ومدير الإدارة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
