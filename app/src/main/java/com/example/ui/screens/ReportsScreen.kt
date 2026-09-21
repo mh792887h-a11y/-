@@ -225,8 +225,6 @@ fun ReportsScreen(
                             نصيب الصندوق: ${CurrencyUtil.formatRiyal(totalFund)}
                             إجمالي المنصرفات: ${CurrencyUtil.formatRiyal(totalExpensesAmt)}
                             صافي الصندوق: ${CurrencyUtil.formatRiyal(netAmount)}
-                            ------------------------------------
-                            برمجة وتصميم محمد هشام الصلاحي
                         """.trimIndent()
                         PrintAndExportUtil.shareTextReport(context, "تقرير أحوال مدنية", summaryText)
                     },

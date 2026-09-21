@@ -96,7 +96,6 @@ object PrintAndExportUtil {
 
                 <div class="footer">
                     <div>يعتبر هذا الإيصال سند قبض رسمي لاستمارة الأحوال المدنية</div>
-                    <div class="developer">برمجة وتصميم محمد هشام الصلاحي</div>
                 </div>
             </body>
             </html>
@@ -216,7 +215,6 @@ object PrintAndExportUtil {
 
                 <div class="footer">
                     <div>أمين الصندوق: __________________ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; مدير الإدارة: __________________</div>
-                    <div style="margin-top: 5px; color: #64748b;">برمجة وتصميم محمد هشام الصلاحي</div>
                 </div>
             </body>
             </html>
@@ -314,7 +312,6 @@ object PrintAndExportUtil {
                     <div>توقيع أمين الصندوق: __________________</div>
                     <div>توقيع مدير الإدارة المستلم: __________________</div>
                 </div>
-                <div style="text-align:center; font-size:10px; color:#94a3b8; margin-top:15px;">برمجة وتصميم محمد هشام الصلاحي</div>
             </body>
             </html>
         """.trimIndent()

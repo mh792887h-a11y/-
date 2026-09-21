@@ -24,7 +24,15 @@ import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -123,7 +131,6 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
     val txToCancel by viewModel.txToCancel.collectAsState()
     val showActualCash by viewModel.showActualCashModal.collectAsState()
     val showCloseDailyConfirm by viewModel.showCloseDailyConfirmModal.collectAsState()
-    val showUserSwitch by viewModel.showUserSwitchModal.collectAsState()
     val showDateInfo by viewModel.showDateInfoModal.collectAsState()
     val showAbout by viewModel.showAboutModal.collectAsState()
     val snackbarMessage by viewModel.snackbarMessage.collectAsState()
@@ -146,97 +153,64 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
                 AppHeader(
                     currentUser = currentUser,
                     onSettingsClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                    onUserClick = { viewModel.showUserSwitch(true) },
+                    onUserClick = { },
                     onDateClick = { viewModel.showDateInfo(true) }
                 )
             }
         },
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 6.dp,
+                containerColor = Color(0xFF0A192F),
+                tonalElevation = 8.dp,
                 modifier = Modifier.padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
             ) {
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.DASHBOARD,
-                    onClick = { viewModel.navigateTo(AppScreen.DASHBOARD) },
-                    icon = { Icon(imageVector = Icons.Default.Home, contentDescription = "الرئيسية") },
-                    label = { Text("الرئيسية", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_home")
+                val navItems = listOf(
+                    Triple(AppScreen.DASHBOARD, Icons.Default.Home, "الرئيسية"),
+                    Triple(AppScreen.OPERATIONS, Icons.Default.ReceiptLong, "العمليات"),
+                    Triple(AppScreen.DAILY_SHEET, Icons.Default.CalendarMonth, "اليومية"),
+                    Triple(AppScreen.CASH_FUND, Icons.Default.AccountBalanceWallet, "الصندوق"),
+                    Triple(AppScreen.REPORTS, Icons.Default.BarChart, "التقارير"),
+                    Triple(AppScreen.SETTINGS, Icons.Default.Settings, "الإعدادات")
                 )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.DAILY_SHEET,
-                    onClick = { viewModel.navigateTo(AppScreen.DAILY_SHEET) },
-                    icon = { Icon(imageVector = Icons.Default.ListAlt, contentDescription = "كشف الاستمارات") },
-                    label = { Text("كشف الاستمارات", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_daily_sheet")
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.DIRECTOR_SHARE,
-                    onClick = { viewModel.navigateTo(AppScreen.DIRECTOR_SHARE) },
-                    icon = { Icon(imageVector = Icons.Default.AttachMoney, contentDescription = "حق الإدارة") },
-                    label = { Text("حق الإدارة", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_director_share")
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.CASH_FUND,
-                    onClick = { viewModel.navigateTo(AppScreen.CASH_FUND) },
-                    icon = { Icon(imageVector = Icons.Default.AccountBalanceWallet, contentDescription = "الصندوق") },
-                    label = { Text("الصندوق واليومية", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_cash_fund")
-                )
-
-                NavigationBarItem(
-                    selected = currentScreen == AppScreen.SETTINGS,
-                    onClick = { viewModel.navigateTo(AppScreen.SETTINGS) },
-                    icon = { Icon(imageVector = Icons.Default.Settings, contentDescription = "الإعدادات") },
-                    label = { Text("الإعدادات", fontSize = 11.sp, fontWeight = FontWeight.SemiBold) },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = NavyPrimary,
-                        selectedTextColor = NavyPrimary,
-                        indicatorColor = NavyPrimary.copy(alpha = 0.15f)
-                    ),
-                    modifier = Modifier.testTag("nav_settings")
-                )
-            }
-        },
-        floatingActionButton = {
-            if (currentScreen == AppScreen.DASHBOARD || currentScreen == AppScreen.DAILY_SHEET) {
-                ExtendedFloatingActionButton(
-                    onClick = { viewModel.showSellForm(true) },
-                    containerColor = NavyPrimary,
-                    contentColor = Color.White,
-                    shape = RoundedCornerShape(16.dp),
-                    modifier = Modifier.testTag("quick_sell_fab")
-                ) {
-                    Text(text = "🪪", fontSize = 20.sp)
-                    Text(
-                        text = " بيع استمارة",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                navItems.forEach { (screen, icon, label) ->
+                    val selected = currentScreen == screen
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = { viewModel.navigateTo(screen) },
+                        icon = {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = label,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        },
+                        label = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                                )
+                                if (selected) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(18.dp)
+                                            .height(2.dp)
+                                            .clip(RoundedCornerShape(1.dp))
+                                            .background(Color(0xFF38BDF8))
+                                    )
+                                }
+                            }
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color(0xFF38BDF8),
+                            selectedTextColor = Color(0xFF38BDF8),
+                            unselectedIconColor = Color(0xFF94A3B8),
+                            unselectedTextColor = Color(0xFF94A3B8),
+                            indicatorColor = Color.Transparent
+                        ),
+                        modifier = Modifier.testTag("nav_${screen.name.lowercase()}")
                     )
                 }
             }
@@ -385,18 +359,6 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
             onDismiss = { viewModel.promptCancelTx(null) },
             onConfirm = { reason ->
                 viewModel.cancelTransaction(txToCancel!!.id, reason)
-            }
-        )
-    }
-
-    // User Switch Dialog
-    if (showUserSwitch) {
-        UserSwitchDialog(
-            users = users,
-            currentUser = currentUser,
-            onDismiss = { viewModel.showUserSwitch(false) },
-            onSelectUser = { user ->
-                viewModel.switchUser(user)
             }
         )
     }

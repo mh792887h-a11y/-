@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,6 +43,11 @@ import com.example.data.entity.TransactionEntity
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
 import com.example.ui.theme.InfoBlue
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.Brush
+import com.example.R
 import com.example.data.entity.UserEntity
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.ExpenseRedContainer
@@ -54,177 +60,153 @@ import com.example.util.CurrencyUtil
 import com.example.util.HijriDateUtil
 
 /**
- * Top app bar with official header, date, developer credit, user switch, and settings.
+ * Top app bar with official header banner, date capsule, and settings button.
  */
 @Composable
 fun AppHeader(
-    currentUser: UserEntity?,
-    onSettingsClick: () -> Unit,
-    onUserClick: () -> Unit,
-    onDateClick: () -> Unit,
+    currentUser: UserEntity? = null,
+    onSettingsClick: () -> Unit = {},
+    onUserClick: () -> Unit = {},
+    onDateClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val hijri = HijriDateUtil.getHijriDate()
     val gregInfo = HijriDateUtil.getGregorianDateInfo()
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.primary,
-        shadowElevation = 4.dp
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp))
     ) {
+        // Landscape mountain and falcon banner background
+        Image(
+            painter = painterResource(id = R.drawable.img_header_banner),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.matchParentSize()
+        )
+
+        // Navy blue gradient overlay for crisp contrast
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(0xE6082247),
+                            Color(0xF50B336B)
+                        )
+                    )
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
-            // Row 1: Title and developer credit next to settings
+            // Row 1: Title & Settings button
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Title
+                // Title & Subtitle
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "صندوق الأحوال المدنية",
                         style = MaterialTheme.typography.titleLarge.copy(
                             fontWeight = FontWeight.Bold,
-                            color = Color.White
+                            color = Color.White,
+                            fontSize = 20.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "الجمهورية اليمنية - مصلحة الأحوال المدنية والسجل المدني",
+                        text = "الجمهورية اليمنية - مصلحة الأحوال المدنية",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            color = Color.White.copy(alpha = 0.8f)
+                            color = Color.White.copy(alpha = 0.85f),
+                            fontSize = 12.sp
                         ),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                // Developer credit and settings
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.End
+                // Settings circular icon button
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.22f),
+                    modifier = Modifier.size(42.dp)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        modifier = Modifier.padding(end = 4.dp)
-                    ) {
-                        Text(
-                            text = "برمجة وتصميم",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 9.sp,
-                                color = Color.White.copy(alpha = 0.75f)
-                            )
-                        )
-                        Text(
-                            text = "محمد هشام الصلاحي",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFFFD54F) // subtle elegant golden yellow
-                            )
-                        )
-                    }
-
                     IconButton(
                         onClick = onSettingsClick,
                         modifier = Modifier
-                            .size(40.dp)
+                            .fillMaxSize()
                             .testTag("settings_button")
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "الإعدادات",
-                            tint = Color.White
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-            // Row 2: Date chip and active user badge
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            // Row 2: Centered Date Capsule
+            Surface(
+                shape = RoundedCornerShape(24.dp),
+                color = Color(0xFF0F3260).copy(alpha = 0.85f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onDateClick() }
+                    .testTag("date_info_chip")
             ) {
-                // Date Chip (Gregorian & Hijri)
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.15f),
+                Row(
                     modifier = Modifier
-                        .clickable { onDateClick() }
-                        .testTag("date_info_chip")
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
                 ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CalendarToday,
-                            contentDescription = "التاريخ",
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
+                    Icon(
+                        imageVector = Icons.Default.CalendarToday,
+                        contentDescription = "التاريخ",
+                        tint = Color.White,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${gregInfo.dayOfWeekArabic} ${gregInfo.formattedArabic} م",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color.White,
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "${gregInfo.formattedArabic} م  |  ${hijri.formatted}",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Medium
-                            )
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "|",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color.White.copy(alpha = 0.45f)
                         )
-                    }
-                }
-
-                // Active User Badge
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color.White.copy(alpha = 0.2f),
-                    modifier = Modifier
-                        .clickable { onUserClick() }
-                        .testTag("user_badge")
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = "المستخدم",
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "🌙 ${hijri.day} ${hijri.monthName} ${hijri.year} هـ",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = Color(0xFFFED7AA),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 12.sp
                         )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = currentUser?.fullName ?: "أمين الصندوق",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(
-                                    if (currentUser?.role == "ADMIN") Color(0xFFE53935) else Color(0xFF43A047)
-                                )
-                                .padding(horizontal = 5.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = if (currentUser?.role == "ADMIN") "مدير" else "صندوق",
-                                fontSize = 9.sp,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
+                    )
                 }
             }
         }

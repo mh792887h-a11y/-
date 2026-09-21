@@ -208,15 +208,6 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
                     SettingsActionRow(
-                        title = "تبديل المستخدم الحالي",
-                        subtitle = "المستخدم الحالي: ${currentUser?.fullName} (${currentUser?.role})",
-                        icon = Icons.Default.AccountCircle,
-                        onClick = { viewModel.showUserSwitch(true) }
-                    )
-
-                    HorizontalDivider(color = Color(0xFFF1F5F9))
-
-                    SettingsActionRow(
                         title = "سجل المراجعة والرقابة (Audit Log)",
                         subtitle = "سجل تفصيلي بكافة العمليات والتعديلات والإلغاءات",
                         icon = Icons.Default.History,
