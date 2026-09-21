@@ -257,8 +257,8 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
             feeSettings = feeSettings,
             recentCitizenNames = recentNames,
             onDismiss = { viewModel.showSellForm(false) },
-            onSubmit = { citizen, formNum, recordNum, type, gender, notes ->
-                viewModel.sellForm(citizen, formNum, recordNum, type, gender, notes)
+            onSubmit = { citizen, formNum, recordNum, type, gender, notes, customGreg, customHijri ->
+                viewModel.sellForm(citizen, formNum, recordNum, type, gender, notes, customGreg, customHijri)
             }
         )
     }

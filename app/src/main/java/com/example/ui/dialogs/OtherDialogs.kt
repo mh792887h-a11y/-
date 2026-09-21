@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,9 +24,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.platform.LocalContext
+import com.example.data.entity.DirectorPaymentEntity
+import com.example.util.PrintAndExportUtil
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -1057,6 +1067,694 @@ fun AboutDialog(onDismiss: () -> Unit) {
                     colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
                 ) {
                     Text("إغلاق", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Dialog to adjust opening balance or add cash from personal pocket.
+ */
+@Composable
+fun UpdateOpeningBalanceDialog(
+    currentOpeningBalance: Double,
+    onDismiss: () -> Unit,
+    onSubmit: (amount: Double, reason: String) -> Unit
+) {
+    var isAdditionMode by remember { mutableStateOf(true) } // true: إضافة من الجيب, false: تعيين إجمالي
+    var amountText by remember { mutableStateOf("") }
+    var reasonText by remember { mutableStateOf("") }
+
+    val enteredAmount = amountText.toDoubleOrNull() ?: 0.0
+    val resultingOpeningBalance = if (isAdditionMode) {
+        currentOpeningBalance + enteredAmount
+    } else {
+        enteredAmount
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(12.dp)
+                .imePadding(),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "💼 رصيد بداية اليوم (العهدة)",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = NavyPrimary
+                        )
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "إغلاق")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Mode Selector
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { isAdditionMode = true },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isAdditionMode) NavyPrimary else Color(0xFFF1F5F9),
+                        border = if (isAdditionMode) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Box(modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "إضافة من الجيب (+)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isAdditionMode) Color.White else Color(0xFF475569),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { isAdditionMode = false },
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (!isAdditionMode) NavyPrimary else Color(0xFFF1F5F9),
+                        border = if (!isAdditionMode) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFCBD5E1))
+                    ) {
+                        Box(modifier = Modifier.padding(vertical = 10.dp, horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(
+                                text = "تحديد الإجمالي مباشرة",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (!isAdditionMode) Color.White else Color(0xFF475569),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Current & New Preview Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("رصيد بداية اليوم الحالي:", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text(CurrencyUtil.formatRiyal(currentOpeningBalance), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        if (isAdditionMode && enteredAmount > 0) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("المبلغ المضاف من الجيب الشخصي:", fontSize = 12.sp, color = IncomeGreen)
+                                Text("+${CurrencyUtil.formatRiyal(enteredAmount)}", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = IncomeGreen)
+                            }
+                        }
+
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("رصيد البداية الجديد المتوقع:", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = NavyPrimary)
+                            Text(
+                                CurrencyUtil.formatRiyal(resultingOpeningBalance),
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyPrimary
+                            )
+                        }
+                        Text(
+                            text = "💡 سينعكس هذا المبلغ ويزداد فوراً في الرصيد المتوقع بالصندوق.",
+                            fontSize = 11.sp,
+                            color = Color(0xFF0369A1),
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Text(
+                    text = if (isAdditionMode) "المبلغ المأخوذ من الجيب الشخصي (ريال) *" else "إجمالي رصيد بداية اليوم الجديد (ريال) *",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = { amountText = it },
+                    placeholder = { Text(if (isAdditionMode) "مثال: 10000" else "مثال: 25000") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("opening_balance_amount_input"),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = "السبب / البيان",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = reasonText,
+                    onValueChange = { reasonText = it },
+                    placeholder = { Text(if (isAdditionMode) "مثال: إضافة عهدة شخصية لبدء اليوم" else "تعديل رصيد بداية اليوم") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("إلغاء")
+                    }
+
+                    Button(
+                        onClick = {
+                            val defaultReason = if (isAdditionMode) "إضافة عهدة شخصية للصندوق: $enteredAmount ريال" else "تعديل رصيد بداية اليوم إلى $resultingOpeningBalance ريال"
+                            val finalReason = reasonText.ifBlank { defaultReason }
+                            onSubmit(resultingOpeningBalance, finalReason)
+                        },
+                        enabled = enteredAmount > 0 || !isAdditionMode,
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .testTag("btn_confirm_opening_balance"),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    ) {
+                        Text("حفظ وتحديث الرصيد", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Modal showing all active debts, allowing debt payment, debt deletion, and printing debt statement.
+ */
+@Composable
+fun DebtsListDialog(
+    debts: List<DebtEntity>,
+    totalDebts: Double,
+    directorateName: String,
+    onDismiss: () -> Unit,
+    onPayDebt: (DebtEntity) -> Unit,
+    onDeleteDebt: (Long) -> Unit,
+    onAddNewDebt: () -> Unit
+) {
+    val context = LocalContext.current
+    val activeDebts = debts.filter { it.status != "PAID" && it.remainingAmount > 0 }
+    var debtToDelete by remember { mutableStateOf<DebtEntity?>(null) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .heightIn(max = 680.dp)
+                .padding(8.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(18.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "📋 كشف الديون والآجل",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = NavyPrimary
+                            )
+                        )
+                        Text(
+                            text = "قائمة الأشخاص المدينين ومبالغ ديونهم",
+                            fontSize = 11.sp,
+                            color = Color(0xFF64748B)
+                        )
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(imageVector = Icons.Default.Close, contentDescription = "إغلاق")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Summary Total Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF1F2)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFFECDD3))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("إجمالي الديون القائمة:", fontSize = 12.sp, color = Color(0xFF991B1B))
+                            Text(
+                                text = CurrencyUtil.formatRiyal(totalDebts),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ExpenseRed
+                            )
+                            Text(
+                                text = "💡 محسوبة في الرصيد المتوقع لأن المبلغ خرج ديناً.",
+                                fontSize = 10.sp,
+                                color = Color(0xFFB91C1C)
+                            )
+                        }
+
+                        Button(
+                            onClick = {
+                                PrintAndExportUtil.printDebtsStatement(context, debts, directorateName)
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("طباعة الكشف", fontSize = 12.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Debts List
+                if (activeDebts.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("✓", fontSize = 36.sp, color = IncomeGreen)
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text("لا توجد أي ديون غير مسددة حالياً.", fontWeight = FontWeight.Bold, color = Color(0xFF64748B))
+                            Text("جميع المبالغ مسددة بالكامل.", fontSize = 12.sp, color = Color(0xFF94A3B8))
+                        }
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(activeDebts, key = { it.id }) { debt ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                            ) {
+                                Column(modifier = Modifier.padding(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            text = debt.personName,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 14.sp,
+                                            color = NavyPrimary
+                                        )
+                                        Text(
+                                            text = CurrencyUtil.formatRiyal(debt.remainingAmount),
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 15.sp,
+                                            color = ExpenseRed
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = if (debt.reason.isNotBlank()) "الغرض: ${debt.reason}" else "دين نقدي",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF64748B)
+                                        )
+                                        Text(
+                                            text = "${debt.gregorianDate} (${debt.hijriDate})",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF94A3B8)
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Button(
+                                            onClick = {
+                                                onDismiss()
+                                                onPayDebt(debt)
+                                            },
+                                            modifier = Modifier.weight(1.2f).height(36.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.buttonColors(containerColor = IncomeGreen),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                                        ) {
+                                            Text("تسديد الدين", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        OutlinedButton(
+                                            onClick = { debtToDelete = debt },
+                                            modifier = Modifier.weight(1f).height(36.dp),
+                                            shape = RoundedCornerShape(8.dp),
+                                            colors = ButtonDefaults.outlinedButtonColors(contentColor = ExpenseRed),
+                                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                                        ) {
+                                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("حذف الدين", fontSize = 12.sp)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onDismiss()
+                            onAddNewDebt()
+                        },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("تسجيل دين جديد", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(0.7f).height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("إغلاق", fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+
+    if (debtToDelete != null) {
+        DeleteConfirmDialog(
+            title = "حذف الدين",
+            message = "هل أنت متأكد من حذف دين المدين '${debtToDelete!!.personName}' بمبلغ ${CurrencyUtil.formatRiyal(debtToDelete!!.remainingAmount)}؟ سيتم إلغاؤه واسترجاع مبلغه للصندوق.",
+            itemName = debtToDelete!!.personName,
+            onDismiss = { debtToDelete = null },
+            onConfirm = {
+                val id = debtToDelete!!.id
+                debtToDelete = null
+                onDeleteDebt(id)
+            }
+        )
+    }
+}
+
+/**
+ * Dialog shown after paying the director to print an official payment voucher.
+ */
+@Composable
+fun DirectorPaymentReceiptDialog(
+    payment: DirectorPaymentEntity,
+    directorateName: String,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(54.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFE8F5E9)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = null,
+                        tint = IncomeGreen,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = "تمت محاسبة وصرف مستحقات المدير",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    color = NavyPrimary
+                )
+                Text(
+                    text = "سند صرف رقم: #DP-${payment.id}",
+                    fontSize = 12.sp,
+                    color = Color(0xFF64748B)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9))
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("المبلغ المنصرف:", fontSize = 13.sp, color = Color(0xFF475569))
+                            Text(CurrencyUtil.formatRiyal(payment.amount), fontSize = 16.sp, fontWeight = FontWeight.Bold, color = IncomeGreen)
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("التاريخ والوقت:", fontSize = 12.sp, color = Color(0xFF64748B))
+                            Text("${payment.gregorianDate} • ${payment.timeString}", fontSize = 12.sp)
+                        }
+                        if (!payment.notes.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("البيان:", fontSize = 12.sp, color = Color(0xFF64748B))
+                                Text(payment.notes, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            PrintAndExportUtil.printDirectorPaymentVoucher(context, payment, directorateName)
+                        },
+                        modifier = Modifier.weight(1.3f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                    ) {
+                        Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("طباعة السند", fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(46.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("تم / إغلاق")
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Universal confirmation dialog for deleting items (forms, expenses, incomes, debts).
+ */
+@Composable
+fun DeleteConfirmDialog(
+    title: String,
+    message: String,
+    itemName: String = "",
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .padding(12.dp),
+            shape = RoundedCornerShape(20.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(50.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFFEBEE)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = ExpenseRed,
+                        modifier = Modifier.size(30.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text(
+                    text = title,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp,
+                    color = NavyPrimary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = message,
+                    fontSize = 13.sp,
+                    color = Color(0xFF475569),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("تراجع")
+                    }
+
+                    Button(
+                        onClick = onConfirm,
+                        modifier = Modifier.weight(1.3f).height(44.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                    ) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("تأكيد الحذف", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }

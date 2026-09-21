@@ -39,6 +39,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +55,7 @@ import androidx.compose.ui.window.Dialog
 import com.example.data.entity.TransactionEntity
 import com.example.ui.CivilFundViewModel
 import com.example.ui.components.TransactionCard
+import com.example.ui.dialogs.DeleteConfirmDialog
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
 import com.example.ui.theme.InfoBlue
@@ -71,6 +75,7 @@ fun OperationsScreen(
     val filterGender by viewModel.filterGender.collectAsState()
     val selectedTx by viewModel.selectedTxForDetail.collectAsState()
     val directorateName by viewModel.directorateName.collectAsState()
+    var txToDelete by remember { mutableStateOf<TransactionEntity?>(null) }
 
     val totalActiveAmount = transactions.filter { it.status == "ACTIVE" }.sumOf { it.salePrice }
 
@@ -287,14 +292,14 @@ fun OperationsScreen(
                                 PrintAndExportUtil.printTransactionReceipt(context, tx, directorateName)
                             },
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(1.1f)
                                 .height(46.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = InfoBlue)
                         ) {
                             Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("طباعة", fontSize = 13.sp)
+                            Text("طباعة", fontSize = 12.sp)
                         }
 
                         if (tx.status == "ACTIVE") {
@@ -303,20 +308,47 @@ fun OperationsScreen(
                                     viewModel.promptCancelTx(tx)
                                 },
                                 modifier = Modifier
-                                    .weight(1f)
+                                    .weight(1.1f)
                                     .height(46.dp),
                                 shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
                             ) {
-                                Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("إلغاء العملية", fontSize = 13.sp)
+                                Text("إلغاء", fontSize = 12.sp)
                             }
+                        }
+
+                        Button(
+                            onClick = {
+                                txToDelete = tx
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
+                        ) {
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("حذف", fontSize = 12.sp)
                         }
                     }
                 }
             }
         }
+    }
+
+    if (txToDelete != null) {
+        val target = txToDelete!!
+        DeleteConfirmDialog(
+            title = "حذف العملية نهائياً",
+            message = "هل أنت متأكد من حذف عملية المواطن (${target.citizenName}) رقم الإيصال #${target.receiptNumber}؟ سيتم حذفها نهائياً وإعادة حساب كافة الإيرادات والصندوق تلقائياً.",
+            onDismiss = { txToDelete = null },
+            onConfirm = {
+                viewModel.deleteTransaction(target.id)
+                viewModel.selectTxForDetail(null)
+                txToDelete = null
+            }
+        )
     }
 }
 

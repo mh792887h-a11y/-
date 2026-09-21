@@ -41,13 +41,19 @@ import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,10 +70,15 @@ import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.TransactionEntity
 import com.example.ui.AppScreen
 import com.example.ui.CivilFundViewModel
+import com.example.ui.dialogs.DebtsListDialog
+import com.example.ui.dialogs.UpdateOpeningBalanceDialog
 import com.example.util.CurrencyUtil
 import com.example.util.PrintAndExportUtil
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     viewModel: CivilFundViewModel,
@@ -78,6 +89,13 @@ fun HomeScreen(
     val context = LocalContext.current
     val allTransactions by viewModel.allTransactions.collectAsState()
     val directorateName by viewModel.directorateName.collectAsState()
+    val allDebts by viewModel.debts.collectAsState()
+    val totalDebts by viewModel.totalRemainingDebts.collectAsState()
+
+    var showUpdateOpeningBalanceDialog by remember { mutableStateOf(false) }
+    var showDebtsListDialog by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     val openingBalance = closing?.openingBalance ?: 0.0
     val totalIncome = closing?.totalIncome ?: todayTransactions.sumOf { it.fundShare }
@@ -87,13 +105,25 @@ fun HomeScreen(
     val actualBalance = closing?.actualBalance ?: expectedBalance
     val diff = closing?.difference ?: (actualBalance - expectedBalance)
 
-    LazyColumn(
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            isRefreshing = true
+            coroutineScope.launch {
+                viewModel.refreshData()
+                delay(350)
+                isRefreshing = false
+            }
+        },
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF1F5F9)),
-        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .background(Color(0xFFF1F5F9))
     ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         // Section 1: Hero Action Card - بيع استمارة
         item {
             Card(
@@ -161,7 +191,7 @@ fun HomeScreen(
             }
         }
 
-        // Section 2: 6 Financial Metrics Grid (3x2)
+        // Section 2: Financial Metrics Grid with Debt next to Expected Balance
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Row 1: رصيد بداية اليوم | إجمالي الخرج | إجمالي الدخل
@@ -170,13 +200,14 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     DashboardMetricCard(
-                        title = "رصيد بداية اليوم",
+                        title = "رصيد بداية اليوم 💼",
                         amount = openingBalance,
                         icon = Icons.Default.AccountBalanceWallet,
                         iconTint = Color(0xFF0284C7),
                         iconBg = Color(0xFFE0F2FE),
                         valueColor = Color(0xFF0369A1),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = { showUpdateOpeningBalanceDialog = true }
                     )
 
                     DashboardMetricCard(
@@ -186,7 +217,8 @@ fun HomeScreen(
                         iconTint = Color(0xFFDC2626),
                         iconBg = Color(0xFFFEE2E2),
                         valueColor = Color(0xFFDC2626),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.navigateTo(AppScreen.INCOME_EXPENSE_DEBT) }
                     )
 
                     DashboardMetricCard(
@@ -196,11 +228,12 @@ fun HomeScreen(
                         iconTint = Color(0xFF16A34A),
                         iconBg = Color(0xFFDCFCE7),
                         valueColor = Color(0xFF16A34A),
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        onClick = { viewModel.navigateTo(AppScreen.INCOME_EXPENSE_DEBT) }
                     )
                 }
 
-                // Row 2: الرصيد الفعلي | الرصيد المتوقع | صافي اليوم
+                // Row 2: الرصيد الفعلي | الرصيد المتوقع | الدين (الآجل)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -227,14 +260,57 @@ fun HomeScreen(
                     )
 
                     DashboardMetricCard(
-                        title = "صافي اليوم",
-                        amount = netToday,
-                        icon = Icons.Default.TrendingUp,
-                        iconTint = Color(0xFF0D9488),
-                        iconBg = Color(0xFFCCFBF1),
-                        valueColor = Color(0xFF0F766E),
-                        modifier = Modifier.weight(1f)
+                        title = "الدين (الآجل) 📋",
+                        amount = totalDebts,
+                        icon = Icons.Default.Payments,
+                        iconTint = Color(0xFFDC2626),
+                        iconBg = Color(0xFFFEE2E2),
+                        valueColor = Color(0xFFDC2626),
+                        modifier = Modifier.weight(1f),
+                        onClick = { showDebtsListDialog = true }
                     )
+                }
+
+                // Row 3: صافي حركة اليومية
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.navigateTo(AppScreen.OPERATIONS) },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDFA)),
+                    border = BorderStroke(1.dp, Color(0xFFCCFBF1))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp, vertical = 9.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.TrendingUp,
+                                contentDescription = null,
+                                tint = Color(0xFF0F766E),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "صافي حركة اليومية (الدخل - الخرج):",
+                                fontSize = 12.sp,
+                                color = Color(0xFF0F766E),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Text(
+                            text = CurrencyUtil.formatRiyal(netToday),
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF0F766E)
+                        )
+                    }
                 }
             }
         }
@@ -776,6 +852,38 @@ fun HomeScreen(
                 }
             }
         }
+    }
+}
+
+    if (showUpdateOpeningBalanceDialog) {
+        UpdateOpeningBalanceDialog(
+            currentOpeningBalance = openingBalance,
+            onDismiss = { showUpdateOpeningBalanceDialog = false },
+            onSubmit = { newBalance, reason ->
+                showUpdateOpeningBalanceDialog = false
+                viewModel.updateOpeningBalance(newBalance, reason)
+            }
+        )
+    }
+
+    if (showDebtsListDialog) {
+        DebtsListDialog(
+            debts = allDebts,
+            totalDebts = totalDebts,
+            directorateName = directorateName,
+            onDismiss = { showDebtsListDialog = false },
+            onPayDebt = { debt ->
+                showDebtsListDialog = false
+                viewModel.selectDebtForPayment(debt)
+            },
+            onDeleteDebt = { debtId ->
+                viewModel.deleteDebt(debtId)
+            },
+            onAddNewDebt = {
+                showDebtsListDialog = false
+                viewModel.showAddDebt(true)
+            }
+        )
     }
 }
 

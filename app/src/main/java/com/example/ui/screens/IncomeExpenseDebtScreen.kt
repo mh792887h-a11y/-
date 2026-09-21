@@ -21,11 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -36,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -50,6 +53,7 @@ import com.example.data.entity.DebtEntity
 import com.example.data.entity.ExpenseEntity
 import com.example.data.entity.IncomeEntity
 import com.example.ui.CivilFundViewModel
+import com.example.ui.dialogs.DeleteConfirmDialog
 import com.example.ui.theme.ExpenseRed
 import com.example.ui.theme.IncomeGreen
 import com.example.ui.theme.InfoBlue
@@ -67,6 +71,10 @@ fun IncomeExpenseDebtScreen(
     val expenses by viewModel.expenses.collectAsState()
     val incomes by viewModel.incomes.collectAsState()
     val debts by viewModel.debts.collectAsState()
+
+    var expenseToDelete by remember { mutableStateOf<ExpenseEntity?>(null) }
+    var incomeToDelete by remember { mutableStateOf<IncomeEntity?>(null) }
+    var debtToDelete by remember { mutableStateOf<DebtEntity?>(null) }
 
     Column(
         modifier = modifier
@@ -102,25 +110,68 @@ fun IncomeExpenseDebtScreen(
         when (selectedTab) {
             0 -> ExpensesTab(
                 expenses = expenses,
-                onAddClick = { viewModel.showAddExpense(true) }
+                onAddClick = { viewModel.showAddExpense(true) },
+                onDeleteClick = { expenseToDelete = it }
             )
             1 -> IncomesTab(
                 incomes = incomes,
-                onAddClick = { viewModel.showAddIncome(true) }
+                onAddClick = { viewModel.showAddIncome(true) },
+                onDeleteClick = { incomeToDelete = it }
             )
             2 -> DebtsTab(
                 debts = debts,
                 onAddClick = { viewModel.showAddDebt(true) },
-                onPayClick = { debt -> viewModel.selectDebtForPayment(debt) }
+                onPayClick = { debt -> viewModel.selectDebtForPayment(debt) },
+                onDeleteClick = { debtToDelete = it }
             )
         }
+    }
+
+    if (expenseToDelete != null) {
+        val target = expenseToDelete!!
+        DeleteConfirmDialog(
+            title = "حذف سند الخرج",
+            message = "هل أنت متأكد من حذف سند الخرج (${target.statement}) بمبلغ ${CurrencyUtil.formatRiyal(target.amount)}؟ سيتم استرجاع المبلغ إلى رصيد الصندوق تلقائياً.",
+            onDismiss = { expenseToDelete = null },
+            onConfirm = {
+                viewModel.deleteExpense(target.id)
+                expenseToDelete = null
+            }
+        )
+    }
+
+    if (incomeToDelete != null) {
+        val target = incomeToDelete!!
+        DeleteConfirmDialog(
+            title = "حذف سند الدخل",
+            message = "هل أنت متأكد من حذف سند الدخل (${target.statement}) بمبلغ ${CurrencyUtil.formatRiyal(target.amount)}؟ سيتم خصم المبلغ من رصيد الصندوق تلقائياً.",
+            onDismiss = { incomeToDelete = null },
+            onConfirm = {
+                viewModel.deleteIncome(target.id)
+                incomeToDelete = null
+            }
+        )
+    }
+
+    if (debtToDelete != null) {
+        val target = debtToDelete!!
+        DeleteConfirmDialog(
+            title = "حذف سجل الدين",
+            message = "هل أنت متأكد من حذف سجل الدين الخاص بـ (${target.personName}) بمبلغ أصلي ${CurrencyUtil.formatRiyal(target.originalAmount)} ومتبقي ${CurrencyUtil.formatRiyal(target.remainingAmount)}؟",
+            onDismiss = { debtToDelete = null },
+            onConfirm = {
+                viewModel.deleteDebt(target.id)
+                debtToDelete = null
+            }
+        )
     }
 }
 
 @Composable
 private fun ExpensesTab(
     expenses: List<ExpenseEntity>,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onDeleteClick: (ExpenseEntity) -> Unit
 ) {
     val totalExpense = expenses.filter { it.status == "ACTIVE" }.sumOf { it.amount }
 
@@ -177,12 +228,26 @@ private fun ExpensesTab(
                             Text(text = "مع: ${item.withWhom}", fontSize = 12.sp, color = Color(0xFF64748B))
                             Text(text = "${item.gregorianDate} • ${item.timeString}", fontSize = 11.sp, color = Color(0xFF94A3B8))
                         }
-                        Text(
-                            text = CurrencyUtil.formatRiyal(item.amount),
-                            fontWeight = FontWeight.Bold,
-                            color = ExpenseRed,
-                            fontSize = 15.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = CurrencyUtil.formatRiyal(item.amount),
+                                fontWeight = FontWeight.Bold,
+                                color = ExpenseRed,
+                                fontSize = 15.sp
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { onDeleteClick(item) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "حذف الخرج",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -193,7 +258,8 @@ private fun ExpensesTab(
 @Composable
 private fun IncomesTab(
     incomes: List<IncomeEntity>,
-    onAddClick: () -> Unit
+    onAddClick: () -> Unit,
+    onDeleteClick: (IncomeEntity) -> Unit
 ) {
     val totalIncome = incomes.filter { it.status == "ACTIVE" }.sumOf { it.amount }
 
@@ -250,12 +316,26 @@ private fun IncomesTab(
                             Text(text = "الفئة: ${item.category} • من: ${item.withWhom}", fontSize = 12.sp, color = Color(0xFF64748B))
                             Text(text = "${item.gregorianDate} • ${item.timeString}", fontSize = 11.sp, color = Color(0xFF94A3B8))
                         }
-                        Text(
-                            text = CurrencyUtil.formatRiyal(item.amount),
-                            fontWeight = FontWeight.Bold,
-                            color = IncomeGreen,
-                            fontSize = 15.sp
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = CurrencyUtil.formatRiyal(item.amount),
+                                fontWeight = FontWeight.Bold,
+                                color = IncomeGreen,
+                                fontSize = 15.sp
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { onDeleteClick(item) },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "حذف الإيراد",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -267,7 +347,8 @@ private fun IncomesTab(
 private fun DebtsTab(
     debts: List<DebtEntity>,
     onAddClick: () -> Unit,
-    onPayClick: (DebtEntity) -> Unit
+    onPayClick: (DebtEntity) -> Unit,
+    onDeleteClick: (DebtEntity) -> Unit
 ) {
     val totalRemaining = debts.sumOf { it.remainingAmount }
 
@@ -319,29 +400,43 @@ private fun DebtsTab(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(text = debt.personName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = when (debt.status) {
-                                    "FULLY_PAID" -> Color(0xFFE8F5E9)
-                                    "PARTIALLY_PAID" -> Color(0xFFFEF3C7)
-                                    else -> Color(0xFFFFEBEE)
-                                }
-                            ) {
-                                Text(
-                                    text = when (debt.status) {
-                                        "FULLY_PAID" -> "مسدد بالكامل ✓"
-                                        "PARTIALLY_PAID" -> "مسدد جزئياً"
-                                        else -> "غير مسدد"
-                                    },
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
                                     color = when (debt.status) {
-                                        "FULLY_PAID" -> IncomeGreen
-                                        "PARTIALLY_PAID" -> WarningAmber
-                                        else -> ExpenseRed
+                                        "FULLY_PAID" -> Color(0xFFE8F5E9)
+                                        "PARTIALLY_PAID" -> Color(0xFFFEF3C7)
+                                        else -> Color(0xFFFFEBEE)
                                     }
-                                )
+                                ) {
+                                    Text(
+                                        text = when (debt.status) {
+                                            "FULLY_PAID" -> "مسدد بالكامل ✓"
+                                            "PARTIALLY_PAID" -> "مسدد جزئياً"
+                                            else -> "غير مسدد"
+                                        },
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = when (debt.status) {
+                                            "FULLY_PAID" -> IncomeGreen
+                                            "PARTIALLY_PAID" -> WarningAmber
+                                            else -> ExpenseRed
+                                        }
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                                IconButton(
+                                    onClick = { onDeleteClick(debt) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "حذف الدين",
+                                        tint = Color(0xFF94A3B8),
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
                             }
                         }
 

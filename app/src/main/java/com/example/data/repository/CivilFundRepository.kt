@@ -16,7 +16,9 @@ import com.example.data.entity.UserEntity
 import com.example.util.HijriDateUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,6 +31,8 @@ class CivilFundRepository(private val db: AppDatabase) {
     val allExpenses: Flow<List<ExpenseEntity>> = db.expenseDao().getAllExpenses()
     val allIncomes: Flow<List<IncomeEntity>> = db.incomeDao().getAllIncome()
     val allDebts: Flow<List<DebtEntity>> = db.debtDao().getAllDebts()
+    val activeDebts: Flow<List<DebtEntity>> = db.debtDao().getActiveDebts()
+    val totalRemainingDebts: Flow<Double> = db.debtDao().getTotalRemainingDebtsFlow().map { it ?: 0.0 }
     val allCashMovements: Flow<List<CashMovementEntity>> = db.cashMovementDao().getAllMovements()
     val allClosings: Flow<List<DailyClosingEntity>> = db.dailyClosingDao().getAllClosings()
     val allAuditLogs: Flow<List<AuditLogEntity>> = db.auditLogDao().getAllLogs()
@@ -37,6 +41,14 @@ class CivilFundRepository(private val db: AppDatabase) {
     val allTransactionDates: Flow<List<String>> = db.transactionDao().getAllTransactionDates()
     val totalDirectorEarnedFlow: Flow<Double?> = db.transactionDao().getTotalDirectorShareFlow()
     val totalDirectorPaidFlow: Flow<Double?> = db.directorPaymentDao().getTotalPaidFlow()
+
+    val totalNewFormsCount: Flow<Int> = db.transactionDao().getActiveNewCountFlow()
+    val activeNewTransactions: Flow<List<TransactionEntity>> = db.transactionDao().getAllActiveNewTransactions()
+    val totalDirectorEarned: Flow<Double> = totalNewFormsCount.map { it * 200.0 }
+    val totalDirectorPaid: Flow<Double> = db.directorPaymentDao().getTotalPaidFlow().map { it ?: 0.0 }
+    val directorRemaining: Flow<Double> = combine(totalDirectorEarned, totalDirectorPaid) { earned, paid ->
+        maxOf(0.0, earned - paid)
+    }
 
     fun getTransactionsByDate(date: String): Flow<List<TransactionEntity>> =
         db.transactionDao().getTransactionsByDate(date)
@@ -93,17 +105,19 @@ class CivilFundRepository(private val db: AppDatabase) {
         recordNumber: String = "",
         formTypeNameArabic: String, // "جديد", "تجديد", "بدل فاقد", "بدل تالف"
         gender: String, // "ذكر", "أنثى"
-        notes: String? = null
+        notes: String? = null,
+        customGregorianDate: String? = null,
+        customHijriDate: String? = null
     ): Result<TransactionEntity> = withContext(Dispatchers.IO) {
-        val today = HijriDateUtil.getTodayGregorianString()
-        val hijri = HijriDateUtil.getHijriDate().formatted
+        val today = if (!customGregorianDate.isNullOrBlank()) customGregorianDate.trim() else HijriDateUtil.getTodayGregorianString()
+        val hijri = if (!customHijriDate.isNullOrBlank()) customHijriDate.trim() else HijriDateUtil.getHijriDateFromString(today).formatted
         val time = HijriDateUtil.getNowTimeString()
         val user = getCurrentUser()
 
         // Check if daily closing is closed
         val closing = db.dailyClosingDao().getDailyClosingSync(today)
         if (closing != null && closing.status == "CLOSED" && user.role != "ADMIN") {
-            return@withContext Result.failure(Exception("اليومية مغلقة لهذا اليوم، ولا يمكن إضافة عمليات إلا بموافقة المدير."))
+            return@withContext Result.failure(Exception("اليومية مغلقة لتاريخ $today، ولا يمكن إضافة عمليات إلا بموافقة المدير."))
         }
 
         // Map type name to key
@@ -419,6 +433,25 @@ class CivilFundRepository(private val db: AppDatabase) {
         val id = db.debtDao().insert(debt)
         val savedDebt = debt.copy(id = id)
 
+        val time = HijriDateUtil.getNowTimeString()
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance - amount
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "تسجيل دين",
+                statement = "دين مسجل على: ${personName.trim()} ($reason)",
+                amountIn = 0.0,
+                amountOut = amount,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = id
+            )
+        )
+
         db.auditLogDao().insert(
             AuditLogEntity(
                 actionType = "تسجيل دين",
@@ -430,6 +463,7 @@ class CivilFundRepository(private val db: AppDatabase) {
             )
         )
 
+        recalculateDailyClosing(today)
         Result.success(savedDebt)
     }
 
@@ -527,6 +561,248 @@ class CivilFundRepository(private val db: AppDatabase) {
         )
 
         recalculateDailyClosing(today)
+        Result.success(Unit)
+    }
+
+    /**
+     * Updates or adds to opening cash balance for the day (رصيد بداية اليوم / العهدة)
+     */
+    suspend fun updateOpeningBalance(
+        date: String,
+        newOpeningBalance: Double,
+        reason: String = "تعديل رصيد بداية اليوم (العهدة الشخصية)"
+    ): Result<DailyClosingEntity> = withContext(Dispatchers.IO) {
+        val closing = getOrCreateDailyClosing(date)
+        val oldOpening = closing.openingBalance
+        val diff = newOpeningBalance - oldOpening
+
+        val updatedClosing = closing.copy(openingBalance = newOpeningBalance)
+        db.dailyClosingDao().update(updatedClosing)
+
+        val hijri = HijriDateUtil.getHijriDateFromString(date).formatted
+        val time = HijriDateUtil.getNowTimeString()
+        val user = getCurrentUser()
+
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance + diff
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "تعديل رصيد البداية",
+                statement = "تعديل رصيد بداية اليوم ($reason) من $oldOpening إلى $newOpeningBalance ريال",
+                amountIn = if (diff > 0) diff else 0.0,
+                amountOut = if (diff < 0) -diff else 0.0,
+                balanceAfter = newBalance,
+                gregorianDate = date,
+                hijriDate = hijri,
+                timeString = time
+            )
+        )
+
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "تعديل رصيد البداية",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = date,
+                hijriDate = hijri,
+                oldValue = "$oldOpening ريال",
+                newValue = "$newOpeningBalance ريال",
+                details = "تعديل رصيد البداية لليومية: $reason (الفرق: $diff ريال)"
+            )
+        )
+
+        val finalClosing = recalculateDailyClosing(date)
+        Result.success(finalClosing)
+    }
+
+    /**
+     * Deletes a transaction completely and reverses its cash impact
+     */
+    suspend fun deleteTransaction(txId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        val tx = db.transactionDao().getTransactionById(txId)
+            ?: return@withContext Result.failure(Exception("العملية غير موجودة."))
+        val user = getCurrentUser()
+        val today = HijriDateUtil.getTodayGregorianString()
+        val hijri = HijriDateUtil.getHijriDate().formatted
+        val time = HijriDateUtil.getNowTimeString()
+
+        // Reverse cash movement
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance - tx.fundShare
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "حذف عملية",
+                statement = "حذف استمارة ${tx.citizenName} (إيصال ${tx.receiptNumber})",
+                amountIn = 0.0,
+                amountOut = tx.fundShare,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = txId
+            )
+        )
+
+        db.transactionDao().deleteById(txId)
+
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "حذف استمارة",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = today,
+                hijriDate = hijri,
+                oldValue = "${tx.receiptNumber} (${tx.salePrice} ريال)",
+                newValue = "محذوفة نهائياً",
+                details = "تم حذف معاملة المواطن ${tx.citizenName} رقم الاستمارة ${tx.formNumber}"
+            )
+        )
+
+        recalculateDailyClosing(tx.gregorianDate)
+        Result.success(Unit)
+    }
+
+    /**
+     * Deletes an expense completely and returns the cash back to the fund
+     */
+    suspend fun deleteExpense(expenseId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        val exp = db.expenseDao().getExpenseById(expenseId)
+            ?: return@withContext Result.failure(Exception("الخرج غير موجود."))
+        val user = getCurrentUser()
+        val today = HijriDateUtil.getTodayGregorianString()
+        val hijri = HijriDateUtil.getHijriDate().formatted
+        val time = HijriDateUtil.getNowTimeString()
+
+        // Reverse cash: expense was deducted, so deleting it restores funds
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance + exp.amount
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "حذف خرج",
+                statement = "استرجاع لحذف خرج: ${exp.statement} (مع: ${exp.withWhom})",
+                amountIn = exp.amount,
+                amountOut = 0.0,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = expenseId
+            )
+        )
+
+        db.expenseDao().deleteById(expenseId)
+
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "حذف خرج",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = today,
+                hijriDate = hijri,
+                oldValue = "${exp.amount} ريال",
+                newValue = "محذوف",
+                details = "تم حذف خرج: ${exp.statement} لـ ${exp.withWhom}"
+            )
+        )
+
+        recalculateDailyClosing(exp.gregorianDate)
+        Result.success(Unit)
+    }
+
+    /**
+     * Deletes an income completely and deducts the cash from fund
+     */
+    suspend fun deleteIncome(incomeId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        val inc = db.incomeDao().getIncomeById(incomeId)
+            ?: return@withContext Result.failure(Exception("الدخل غير موجود."))
+        val user = getCurrentUser()
+        val today = HijriDateUtil.getTodayGregorianString()
+        val hijri = HijriDateUtil.getHijriDate().formatted
+        val time = HijriDateUtil.getNowTimeString()
+
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance - inc.amount
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "حذف دخل",
+                statement = "إلغاء لحذف دخل: ${inc.category} - ${inc.statement}",
+                amountIn = 0.0,
+                amountOut = inc.amount,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = incomeId
+            )
+        )
+
+        db.incomeDao().deleteById(incomeId)
+
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "حذف دخل",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = today,
+                hijriDate = hijri,
+                oldValue = "${inc.amount} ريال",
+                newValue = "محذوف",
+                details = "تم حذف دخل: ${inc.category} بيان: ${inc.statement}"
+            )
+        )
+
+        recalculateDailyClosing(inc.gregorianDate)
+        Result.success(Unit)
+    }
+
+    /**
+     * Deletes a debt completely and restores remaining cash to fund
+     */
+    suspend fun deleteDebt(debtId: Long): Result<Unit> = withContext(Dispatchers.IO) {
+        val debt = db.debtDao().getDebtById(debtId)
+            ?: return@withContext Result.failure(Exception("سجل الدين غير موجود."))
+        val user = getCurrentUser()
+        val today = HijriDateUtil.getTodayGregorianString()
+        val hijri = HijriDateUtil.getHijriDate().formatted
+        val time = HijriDateUtil.getNowTimeString()
+
+        val latestMovement = db.cashMovementDao().getLatestMovement()
+        val currentBalance = latestMovement?.balanceAfter ?: 0.0
+        val newBalance = currentBalance + debt.remainingAmount
+
+        db.cashMovementDao().insert(
+            CashMovementEntity(
+                movementType = "حذف دين",
+                statement = "إلغاء دين على ${debt.personName} واسترجاع ${debt.remainingAmount} ريال للصندوق",
+                amountIn = debt.remainingAmount,
+                amountOut = 0.0,
+                balanceAfter = newBalance,
+                gregorianDate = today,
+                hijriDate = hijri,
+                timeString = time,
+                referenceId = debtId
+            )
+        )
+
+        db.debtDao().deleteById(debtId)
+
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "حذف دين",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = today,
+                hijriDate = hijri,
+                oldValue = "${debt.remainingAmount} ريال",
+                newValue = "محذوف",
+                details = "تم حذف دين على ${debt.personName}"
+            )
+        )
+
+        recalculateDailyClosing(debt.gregorianDate)
         Result.success(Unit)
     }
 
@@ -712,9 +988,12 @@ class CivilFundRepository(private val db: AppDatabase) {
         val otherIncomeTotal = otherIncomes.filter { it.category != "تسديد دين" }.sumOf { it.amount }
         val debtPaidTotal = otherIncomes.filter { it.category == "تسديد دين" }.sumOf { it.amount }
 
+        // Debts issued on this date (cash leaving fund as debt)
+        val debtsIssuedToday = db.debtDao().getDebtsByDateSync(date).sumOf { it.originalAmount }
+
         // Total fund income is the net fund share + other income + debt repayment
         val totalIncome = totalFundShare + otherIncomeTotal + debtPaidTotal
-        val netToday = totalIncome - totalExpenses
+        val netToday = totalIncome - totalExpenses - debtsIssuedToday
         val expectedBalance = closing.openingBalance + netToday
         val diff = closing.actualBalance - expectedBalance
 

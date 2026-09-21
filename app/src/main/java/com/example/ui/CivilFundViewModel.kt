@@ -103,6 +103,18 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
     private val _showAboutModal = MutableStateFlow(false)
     val showAboutModal: StateFlow<Boolean> = _showAboutModal.asStateFlow()
 
+    private val _showDebtsListModal = MutableStateFlow(false)
+    val showDebtsListModal: StateFlow<Boolean> = _showDebtsListModal.asStateFlow()
+
+    private val _showUpdateOpeningBalanceModal = MutableStateFlow(false)
+    val showUpdateOpeningBalanceModal: StateFlow<Boolean> = _showUpdateOpeningBalanceModal.asStateFlow()
+
+    private val _directorPaymentToPrint = MutableStateFlow<DirectorPaymentEntity?>(null)
+    val directorPaymentToPrint: StateFlow<DirectorPaymentEntity?> = _directorPaymentToPrint.asStateFlow()
+
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
     // Date selection for Daily Sheet (عرض جميع الأيام)
     private val _selectedReportDate = MutableStateFlow(todayDate)
     val selectedReportDate: StateFlow<String> = _selectedReportDate.asStateFlow()
@@ -118,21 +130,31 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         .flatMapLatest { date -> repository.getDailyClosing(date) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
-    // Director Share (حق الإدارة - 200 ريال عن كل استمارة جديد)
+    // Director Share (حق الإدارة - 200 ريال عن كل استمارة جديد عبر جميع الأيام)
     val allDirectorPayments: StateFlow<List<DirectorPaymentEntity>> = repository.allDirectorPayments
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val totalDirectorEarned: StateFlow<Double> = repository.totalDirectorEarnedFlow
-        .map { it ?: 0.0 }
+    val totalNewFormsCount: StateFlow<Int> = repository.totalNewFormsCount
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
+
+    val activeNewTransactions: StateFlow<List<TransactionEntity>> = repository.activeNewTransactions
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val totalDirectorEarned: StateFlow<Double> = repository.totalDirectorEarned
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val totalDirectorPaid: StateFlow<Double> = repository.totalDirectorPaidFlow
-        .map { it ?: 0.0 }
+    val totalDirectorPaid: StateFlow<Double> = repository.totalDirectorPaid
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
-    val directorRemaining: StateFlow<Double> = combine(totalDirectorEarned, totalDirectorPaid) { earned, paid ->
-        (earned - paid).coerceAtLeast(0.0)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+    val directorRemaining: StateFlow<Double> = repository.directorRemaining
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
+
+    // Active Debts
+    val activeDebts: StateFlow<List<DebtEntity>> = repository.activeDebts
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val totalRemainingDebts: StateFlow<Double> = repository.totalRemainingDebts
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0.0)
 
     // Search & Filter state in Operations
     val searchQuery = MutableStateFlow("")
@@ -282,15 +304,95 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         _showPayDirectorModal.value = show
     }
 
-    fun payDirector(amount: Double, notes: String?) {
+    fun dismissDirectorPaymentReceipt() {
+        _directorPaymentToPrint.value = null
+    }
+
+    fun showDebtsList(show: Boolean) {
+        _showDebtsListModal.value = show
+    }
+
+    fun showUpdateOpeningBalance(show: Boolean) {
+        _showUpdateOpeningBalanceModal.value = show
+    }
+
+    fun updateOpeningBalance(amount: Double, reason: String) {
+        viewModelScope.launch {
+            val result = repository.updateOpeningBalance(todayDate, amount, reason)
+            result.onSuccess {
+                _showUpdateOpeningBalanceModal.value = false
+                _snackbarMessage.value = "تم تحديث رصيد بداية اليوم بنجاح إلى $amount ريال."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر تعديل رصيد بداية اليوم."
+            }
+        }
+    }
+
+    fun deleteTransaction(txId: Long) {
+        viewModelScope.launch {
+            val result = repository.deleteTransaction(txId)
+            result.onSuccess {
+                _selectedTxForDetail.value = null
+                _snackbarMessage.value = "تم حذف الاستمارة وإلغاء أثرها من الصندوق بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر حذف الاستمارة."
+            }
+        }
+    }
+
+    fun deleteExpense(expenseId: Long) {
+        viewModelScope.launch {
+            val result = repository.deleteExpense(expenseId)
+            result.onSuccess {
+                _snackbarMessage.value = "تم حذف الخرج واسترجاع مبلغه للصندوق بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر حذف الخرج."
+            }
+        }
+    }
+
+    fun deleteIncome(incomeId: Long) {
+        viewModelScope.launch {
+            val result = repository.deleteIncome(incomeId)
+            result.onSuccess {
+                _snackbarMessage.value = "تم حذف الدخل بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر حذف الدخل."
+            }
+        }
+    }
+
+    fun deleteDebt(debtId: Long) {
+        viewModelScope.launch {
+            val result = repository.deleteDebt(debtId)
+            result.onSuccess {
+                _selectedDebtForPayment.value = null
+                _snackbarMessage.value = "تم حذف الدين واسترجاع مبلغه للصندوق بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر حذف الدين."
+            }
+        }
+    }
+
+    fun refreshData() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            repository.recalculateDailyClosing(todayDate)
+            kotlinx.coroutines.delay(400)
+            _isRefreshing.value = false
+        }
+    }
+
+    fun payDirector(amount: Double, notes: String?, isFullPayment: Boolean = false) {
         if (amount <= 0) {
             _snackbarMessage.value = "يرجى إدخال مبلغ صحيح للصرف."
             return
         }
         viewModelScope.launch {
             val result = repository.payDirector(amount, notes)
-            result.onSuccess {
+            result.onSuccess { payment ->
                 _showPayDirectorModal.value = false
+                _directorPaymentToPrint.value = payment
                 _snackbarMessage.value = "تمت محاسبة المدير وصرف مبلغ $amount ريال بنجاح."
             }.onFailure { err ->
                 _snackbarMessage.value = err.message ?: "تعذر صرف المبلغ للمدير."
@@ -304,7 +406,9 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         recordNumber: String,
         formTypeNameArabic: String,
         gender: String,
-        notes: String?
+        notes: String?,
+        customGregorianDate: String? = null,
+        customHijriDate: String? = null
     ) {
         if (citizenName.isBlank()) {
             _snackbarMessage.value = "يرجى كتابة اسم المواطن رباعي."
@@ -315,7 +419,10 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
             return
         }
         viewModelScope.launch {
-            val result = repository.sellForm(citizenName, formNumber, recordNumber, formTypeNameArabic, gender, notes)
+            val result = repository.sellForm(
+                citizenName, formNumber, recordNumber, formTypeNameArabic, gender, notes,
+                customGregorianDate, customHijriDate
+            )
             result.onSuccess { tx ->
                 _showSellFormModal.value = false
                 _lastSavedReceipt.value = tx
@@ -476,6 +583,22 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
                 _snackbarMessage.value = "تمت استعادة البيانات بنجاح."
             }.onFailure { err ->
                 _snackbarMessage.value = err.message ?: "فشل استعادة البيانات."
+            }
+        }
+    }
+
+    fun payDirector(amount: Double, notes: String? = null) {
+        if (amount <= 0) {
+            _snackbarMessage.value = "يرجى إدخال مبلغ صحيح."
+            return
+        }
+        viewModelScope.launch {
+            val result = repository.payDirector(amount, notes)
+            result.onSuccess { payment ->
+                _directorPaymentToPrint.value = payment
+                _snackbarMessage.value = "تم تسجيل صرف الدفعة للمدير بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر صرف المبلغ."
             }
         }
     }

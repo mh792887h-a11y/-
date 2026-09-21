@@ -58,6 +58,21 @@ interface TransactionDao {
     @Query("SELECT SUM(directorateShare) FROM transactions WHERE status = 'ACTIVE'")
     suspend fun getTotalDirectorShareSync(): Double?
 
+    @Query("SELECT COUNT(*) FROM transactions WHERE transactionType = 'جديد' AND status = 'ACTIVE'")
+    fun getActiveNewCountFlow(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM transactions WHERE transactionType = 'جديد' AND status = 'ACTIVE'")
+    suspend fun getActiveNewCountSync(): Int
+
+    @Query("SELECT * FROM transactions WHERE transactionType = 'جديد' AND status = 'ACTIVE' ORDER BY gregorianDate DESC, id DESC")
+    fun getAllActiveNewTransactions(): Flow<List<TransactionEntity>>
+
+    @Query("SELECT DISTINCT gregorianDate FROM transactions WHERE transactionType = 'جديد' AND status = 'ACTIVE' ORDER BY gregorianDate DESC")
+    fun getDatesWithNewTransactions(): Flow<List<String>>
+
+    @Query("DELETE FROM transactions WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(transaction: TransactionEntity): Long
 
@@ -91,6 +106,12 @@ interface IncomeDao {
     @Query("SELECT * FROM income WHERE gregorianDate BETWEEN :startDate AND :endDate ORDER BY id DESC")
     fun getIncomeBetween(startDate: String, endDate: String): Flow<List<IncomeEntity>>
 
+    @Query("SELECT * FROM income WHERE id = :id")
+    suspend fun getIncomeById(id: Long): IncomeEntity?
+
+    @Query("DELETE FROM income WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(income: IncomeEntity): Long
 
@@ -109,6 +130,12 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses WHERE gregorianDate BETWEEN :startDate AND :endDate ORDER BY id DESC")
     fun getExpensesBetween(startDate: String, endDate: String): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE id = :id")
+    suspend fun getExpenseById(id: Long): ExpenseEntity?
+
+    @Query("DELETE FROM expenses WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(expense: ExpenseEntity): Long
 
@@ -121,8 +148,26 @@ interface DebtDao {
     @Query("SELECT * FROM debts ORDER BY id DESC")
     fun getAllDebts(): Flow<List<DebtEntity>>
 
+    @Query("SELECT * FROM debts WHERE gregorianDate = :date ORDER BY id DESC")
+    fun getDebtsByDate(date: String): Flow<List<DebtEntity>>
+
+    @Query("SELECT * FROM debts WHERE gregorianDate = :date")
+    suspend fun getDebtsByDateSync(date: String): List<DebtEntity>
+
+    @Query("SELECT * FROM debts WHERE status != 'FULLY_PAID' ORDER BY id DESC")
+    fun getActiveDebts(): Flow<List<DebtEntity>>
+
+    @Query("SELECT SUM(remainingAmount) FROM debts WHERE status != 'FULLY_PAID'")
+    fun getTotalRemainingDebtsFlow(): Flow<Double?>
+
+    @Query("SELECT SUM(remainingAmount) FROM debts WHERE status != 'FULLY_PAID'")
+    suspend fun getTotalRemainingDebtsSync(): Double?
+
     @Query("SELECT * FROM debts WHERE id = :id")
     suspend fun getDebtById(id: Long): DebtEntity?
+
+    @Query("DELETE FROM debts WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(debt: DebtEntity): Long
@@ -159,6 +204,12 @@ interface CashMovementDao {
 
     @Query("SELECT * FROM cash_movements ORDER BY id DESC LIMIT 1")
     suspend fun getLatestMovement(): CashMovementEntity?
+
+    @Query("DELETE FROM cash_movements WHERE referenceId = :referenceId AND movementType = :movementType")
+    suspend fun deleteByReferenceAndType(referenceId: Long, movementType: String)
+
+    @Query("DELETE FROM cash_movements WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(movement: CashMovementEntity): Long
@@ -243,6 +294,12 @@ interface DirectorPaymentDao {
 
     @Query("SELECT SUM(amount) FROM director_payments")
     suspend fun getTotalPaidSync(): Double?
+
+    @Query("SELECT * FROM director_payments WHERE id = :id")
+    suspend fun getPaymentById(id: Long): DirectorPaymentEntity?
+
+    @Query("DELETE FROM director_payments WHERE id = :id")
+    suspend fun deleteById(id: Long)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(payment: DirectorPaymentEntity): Long

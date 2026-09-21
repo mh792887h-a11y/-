@@ -45,6 +45,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -78,7 +79,7 @@ fun SellFormDialog(
     feeSettings: List<FeeSettingEntity>,
     recentCitizenNames: List<String>,
     onDismiss: () -> Unit,
-    onSubmit: (citizenName: String, formNumber: String, recordNumber: String, formType: String, gender: String, notes: String?) -> Unit
+    onSubmit: (citizenName: String, formNumber: String, recordNumber: String, formType: String, gender: String, notes: String?, customGregorianDate: String?, customHijriDate: String?) -> Unit
 ) {
     var citizenName by remember { mutableStateOf("") }
     var formNumber by remember { mutableStateOf("") }
@@ -87,6 +88,9 @@ fun SellFormDialog(
     var selectedGender by remember { mutableStateOf("ذكر") }
     var notes by remember { mutableStateOf("") }
     var isSubmitting by remember { mutableStateOf(false) }
+
+    var isCustomDate by remember { mutableStateOf(false) }
+    var customDateText by remember { mutableStateOf(HijriDateUtil.getTodayGregorianString()) }
 
     val todayGregorian = HijriDateUtil.getGregorianDateInfo().formattedArabic
     val todayHijri = HijriDateUtil.getHijriDate().formatted
@@ -390,12 +394,64 @@ fun SellFormDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Date auto-generated info
-                Text(
-                    text = "التاريخ: $todayGregorian م  |  $todayHijri",
-                    fontSize = 11.sp,
-                    color = Color(0xFF64748B)
-                )
+                // Date selection section
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = if (!isCustomDate) "📅 تاريخ القيد: $todayGregorian م" else "📅 تسجيل بتاريخ مخصص",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = NavyPrimary
+                            )
+                            TextButton(
+                                onClick = { isCustomDate = !isCustomDate },
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Text(
+                                    text = if (!isCustomDate) "تغيير التاريخ" else "العودة لليوم",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF0284C7)
+                                )
+                            }
+                        }
+
+                        if (!isCustomDate) {
+                            Text(
+                                text = "الموافق: $todayHijri",
+                                fontSize = 11.sp,
+                                color = Color(0xFF64748B)
+                            )
+                        } else {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            OutlinedTextField(
+                                value = customDateText,
+                                onValueChange = { customDateText = it },
+                                label = { Text("التاريخ الميلادي (YYYY-MM-DD)") },
+                                placeholder = { Text("مثال: 2026-09-20") },
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Text(
+                                text = "💡 يمكنك إدخال استمارات لأي يوم سابق، وسيتم حفظها وحسابها في يومية ذلك التاريخ.",
+                                fontSize = 10.sp,
+                                color = Color(0xFF0369A1)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -416,7 +472,17 @@ fun SellFormDialog(
                     onClick = {
                         if (!isSubmitting && citizenName.isNotBlank() && formNumber.isNotBlank() && recordNumber.isNotBlank()) {
                             isSubmitting = true
-                            onSubmit(citizenName, formNumber, recordNumber, selectedType, selectedGender, notes.ifBlank { null })
+                            val finalCustomDate = if (isCustomDate && customDateText.isNotBlank()) customDateText.trim() else null
+                            onSubmit(
+                                citizenName,
+                                formNumber,
+                                recordNumber,
+                                selectedType,
+                                selectedGender,
+                                notes.ifBlank { null },
+                                finalCustomDate,
+                                null
+                            )
                         }
                     },
                     enabled = !isSubmitting && citizenName.isNotBlank() && formNumber.isNotBlank() && recordNumber.isNotBlank(),
