@@ -209,6 +209,216 @@ class CivilFundRepository(private val db: AppDatabase) {
         Result.success(savedTx)
     }
 
+    data class BatchFormItem(
+        val citizenName: String,
+        val formNumber: String,
+        val recordNumber: String,
+        val gender: String = "ذكر"
+    )
+
+    /**
+     * Sells multiple forms simultaneously (e.g. 10 citizens entered together),
+     * saving each citizen individually with unique receipt numbers.
+     */
+    suspend fun sellFormsBatch(
+        items: List<BatchFormItem>,
+        formType: String,
+        notes: String?,
+        customGregorianDate: String? = null,
+        customHijriDate: String? = null
+    ): Result<List<TransactionEntity>> = withContext(Dispatchers.IO) {
+        val validItems = items.filter { it.citizenName.isNotBlank() }
+        if (validItems.isEmpty()) {
+            return@withContext Result.failure(Exception("يرجى إدخال اسم مواطن واحد على الأقل."))
+        }
+
+        val user = getCurrentUser()
+        val typeKey = when (formType) {
+            "جديد" -> "NEW"
+            "تجديد" -> "RENEW"
+            "بدل فاقد" -> "LOST"
+            "بدل تالف" -> "DAMAGED"
+            else -> "NEW"
+        }
+        val feeSetting = db.feeSettingDao().getFeeSettingSync(typeKey)
+            ?: return@withContext Result.failure(Exception("نوع المعاملة غير معرف."))
+
+        val targetGregorian = customGregorianDate?.takeIf { it.isNotBlank() } ?: HijriDateUtil.getTodayGregorianString()
+        val targetHijri = customHijriDate?.takeIf { it.isNotBlank() } ?: HijriDateUtil.getHijriDateFromString(targetGregorian).formatted
+        val time = HijriDateUtil.getNowTimeString()
+
+        val dateDigits = targetGregorian.replace("-", "")
+        val lastTx = db.transactionDao().getLastReceiptForDate(targetGregorian)
+        var nextSeq = if (lastTx != null && lastTx.receiptNumber.startsWith(dateDigits)) {
+            val seqStr = lastTx.receiptNumber.substringAfter("-")
+            (seqStr.toIntOrNull() ?: 0) + 1
+        } else {
+            1
+        }
+
+        val savedTransactions = mutableListOf<TransactionEntity>()
+        var runningCashBalance = db.cashMovementDao().getLatestMovement()?.balanceAfter ?: 0.0
+
+        for (item in validItems) {
+            val receiptNumber = String.format(Locale.US, "%s-%04d", dateDigits, nextSeq)
+            nextSeq++
+
+            val tx = TransactionEntity(
+                receiptNumber = receiptNumber,
+                citizenName = item.citizenName.trim(),
+                formNumber = item.formNumber.trim(),
+                recordNumber = item.recordNumber.trim(),
+                transactionType = formType,
+                gender = item.gender,
+                salePrice = feeSetting.salePrice,
+                stateShare = feeSetting.stateShare,
+                directorateShare = feeSetting.directorateShare,
+                fundShare = feeSetting.fundShare,
+                gregorianDate = targetGregorian,
+                hijriDate = targetHijri,
+                timeString = time,
+                createdByUserId = user.id,
+                createdByName = user.fullName,
+                notes = notes?.trim(),
+                status = "ACTIVE"
+            )
+            val txId = db.transactionDao().insert(tx)
+            val insertedTx = tx.copy(id = txId)
+            savedTransactions.add(insertedTx)
+
+            // Cash Movement
+            runningCashBalance += feeSetting.fundShare
+            db.cashMovementDao().insert(
+                CashMovementEntity(
+                    movementType = "بيع استمارة",
+                    statement = "استمارة $formType - ${item.citizenName.trim()} (إيصال $receiptNumber)",
+                    amountIn = feeSetting.fundShare,
+                    amountOut = 0.0,
+                    balanceAfter = runningCashBalance,
+                    gregorianDate = targetGregorian,
+                    hijriDate = targetHijri,
+                    timeString = time,
+                    referenceId = txId
+                )
+            )
+
+            // Audit Log
+            db.auditLogDao().insert(
+                AuditLogEntity(
+                    actionType = "بيع استمارة (دفعة)",
+                    performedBy = "${user.fullName} (${user.role})",
+                    gregorianDate = targetGregorian,
+                    hijriDate = targetHijri,
+                    oldValue = null,
+                    newValue = "${feeSetting.fundShare} ريال (صافي الصندوق)",
+                    details = "تسجيل استمارة $formType للمواطن ${item.citizenName.trim()} - استمارة: ${item.formNumber} - قيد: ${item.recordNumber}"
+                )
+            )
+        }
+
+        // Recalculate daily closing stats
+        recalculateDailyClosing(targetGregorian)
+
+        Result.success(savedTransactions)
+    }
+
+    /**
+     * Updates an existing transaction (e.g. name, form number, record number, date, type).
+     * Adjusts cash if fund share changed and recalculates daily closing.
+     */
+    suspend fun updateTransaction(
+        transactionId: Long,
+        citizenName: String,
+        formNumber: String,
+        recordNumber: String,
+        transactionType: String,
+        gender: String,
+        notes: String?,
+        gregorianDate: String,
+        hijriDate: String
+    ): Result<TransactionEntity> = withContext(Dispatchers.IO) {
+        val user = getCurrentUser()
+        val existingTx = db.transactionDao().getTransactionById(transactionId)
+            ?: return@withContext Result.failure(Exception("العملية غير موجودة."))
+
+        val oldDate = existingTx.gregorianDate
+        val typeKey = when (transactionType) {
+            "جديد" -> "NEW"
+            "تجديد" -> "RENEW"
+            "بدل فاقد" -> "LOST"
+            "بدل تالف" -> "DAMAGED"
+            else -> "NEW"
+        }
+        val feeSetting = db.feeSettingDao().getFeeSettingSync(typeKey)
+            ?: return@withContext Result.failure(Exception("نوع المعاملة غير معرف."))
+
+        val oldFundShare = existingTx.fundShare
+        val newFundShare = feeSetting.fundShare
+        val fundShareDiff = newFundShare - oldFundShare
+
+        val updatedTx = existingTx.copy(
+            citizenName = citizenName.trim(),
+            formNumber = formNumber.trim(),
+            recordNumber = recordNumber.trim(),
+            transactionType = transactionType,
+            gender = gender,
+            notes = notes?.trim(),
+            gregorianDate = gregorianDate.trim(),
+            hijriDate = hijriDate.trim(),
+            salePrice = feeSetting.salePrice,
+            stateShare = feeSetting.stateShare,
+            directorateShare = feeSetting.directorateShare,
+            fundShare = feeSetting.fundShare
+        )
+
+        db.transactionDao().update(updatedTx)
+
+        // If fund share changed and tx is ACTIVE, update cash
+        if (existingTx.status == "ACTIVE" && fundShareDiff != 0.0) {
+            val latestMovement = db.cashMovementDao().getLatestMovement()
+            val currentBalance = latestMovement?.balanceAfter ?: 0.0
+            val newBalance = currentBalance + fundShareDiff
+            val today = HijriDateUtil.getTodayGregorianString()
+            val hijri = HijriDateUtil.getHijriDateFromString(today).formatted
+            val time = HijriDateUtil.getNowTimeString()
+
+            db.cashMovementDao().insert(
+                CashMovementEntity(
+                    movementType = "تعديل عملية",
+                    statement = "تعديل استمارة $citizenName (إيصال #${existingTx.receiptNumber}) - تعديل الصندوق بمقدار ${if (fundShareDiff > 0.0) "+$fundShareDiff" else "$fundShareDiff"}",
+                    amountIn = if (fundShareDiff > 0.0) fundShareDiff else 0.0,
+                    amountOut = if (fundShareDiff < 0.0) -fundShareDiff else 0.0,
+                    balanceAfter = newBalance,
+                    gregorianDate = today,
+                    hijriDate = hijri,
+                    timeString = time,
+                    referenceId = existingTx.id
+                )
+            )
+        }
+
+        // Audit Log
+        db.auditLogDao().insert(
+            AuditLogEntity(
+                actionType = "تعديل عملية",
+                performedBy = "${user.fullName} (${user.role})",
+                gregorianDate = HijriDateUtil.getTodayGregorianString(),
+                hijriDate = HijriDateUtil.getHijriDate().formatted,
+                oldValue = "الاسم: ${existingTx.citizenName} | استمارة: ${existingTx.formNumber} | تاريخ: ${existingTx.gregorianDate} | نوع: ${existingTx.transactionType}",
+                newValue = "الاسم: $citizenName | استمارة: $formNumber | تاريخ: $gregorianDate | نوع: $transactionType",
+                details = "تعديل بيانات استمارة إيصال #${existingTx.receiptNumber}"
+            )
+        )
+
+        // Recalculate daily closing for both oldDate and gregorianDate
+        recalculateDailyClosing(oldDate)
+        if (oldDate != gregorianDate) {
+            recalculateDailyClosing(gregorianDate)
+        }
+
+        Result.success(updatedTx)
+    }
+
     /**
      * Cancels a transaction (Soft delete with cash reversal)
      */

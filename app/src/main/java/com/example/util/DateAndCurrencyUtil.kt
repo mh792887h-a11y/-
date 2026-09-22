@@ -185,4 +185,31 @@ object HijriDateUtil {
             gregorianDateStr
         }
     }
+
+    fun shiftDays(gregorianDateStr: String, daysToAdd: Int): String {
+        return try {
+            val parts = gregorianDateStr.split("-")
+            val cal = Calendar.getInstance()
+            cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
+            cal.add(Calendar.DAY_OF_MONTH, daysToAdd)
+            val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            sdf.format(cal.time)
+        } catch (e: Exception) {
+            getTodayGregorianString()
+        }
+    }
+
+    fun getFormattedArabicWithDayOfWeek(gregorianDateStr: String): String {
+        return try {
+            val parts = gregorianDateStr.split("-")
+            val cal = Calendar.getInstance()
+            cal.set(parts[0].toInt(), parts[1].toInt() - 1, parts[2].toInt())
+            val dayOfWeek = cal.get(Calendar.DAY_OF_WEEK)
+            val dayOfWeekName = WEEK_DAYS_ARABIC.getOrElse(dayOfWeek - 1) { "" }
+            val formattedDate = formatArabicDate(gregorianDateStr)
+            "$dayOfWeekName، $formattedDate م"
+        } catch (e: Exception) {
+            gregorianDateStr
+        }
+    }
 }

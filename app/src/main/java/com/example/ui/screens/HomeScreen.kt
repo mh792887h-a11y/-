@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.AddCard
 import androidx.compose.material.icons.filled.Adjust
@@ -70,9 +71,11 @@ import com.example.data.entity.DailyClosingEntity
 import com.example.data.entity.TransactionEntity
 import com.example.ui.AppScreen
 import com.example.ui.CivilFundViewModel
+import com.example.ui.dialogs.AppDatePickerDialog
 import com.example.ui.dialogs.DebtsListDialog
 import com.example.ui.dialogs.UpdateOpeningBalanceDialog
 import com.example.util.CurrencyUtil
+import com.example.util.HijriDateUtil
 import com.example.util.PrintAndExportUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -92,18 +95,27 @@ fun HomeScreen(
     val allDebts by viewModel.debts.collectAsState()
     val totalDebts by viewModel.totalRemainingDebts.collectAsState()
 
+    val activeDate by viewModel.dashboardDate.collectAsState()
+    val dashboardClosing by viewModel.dashboardClosing.collectAsState()
+    val dashboardTransactions by viewModel.dashboardTransactions.collectAsState()
+    val isToday = activeDate == HijriDateUtil.getTodayGregorianString()
+
+    val effectiveClosing = dashboardClosing ?: closing
+    val effectiveTransactions = dashboardTransactions
+
     var showUpdateOpeningBalanceDialog by remember { mutableStateOf(false) }
     var showDebtsListDialog by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val openingBalance = closing?.openingBalance ?: 0.0
-    val totalIncome = closing?.totalIncome ?: todayTransactions.sumOf { it.fundShare }
-    val totalExpenses = closing?.totalExpenses ?: 0.0
-    val netToday = closing?.netToday ?: (totalIncome - totalExpenses)
-    val expectedBalance = closing?.expectedBalance ?: (openingBalance + totalIncome - totalExpenses)
-    val actualBalance = closing?.actualBalance ?: expectedBalance
-    val diff = closing?.difference ?: (actualBalance - expectedBalance)
+    val openingBalance = effectiveClosing?.openingBalance ?: 0.0
+    val totalIncome = effectiveClosing?.totalIncome ?: effectiveTransactions.sumOf { it.fundShare }
+    val totalExpenses = effectiveClosing?.totalExpenses ?: 0.0
+    val netToday = effectiveClosing?.netToday ?: (totalIncome - totalExpenses)
+    val expectedBalance = effectiveClosing?.expectedBalance ?: (openingBalance + totalIncome - totalExpenses)
+    val actualBalance = effectiveClosing?.actualBalance ?: expectedBalance
+    val diff = effectiveClosing?.difference ?: (actualBalance - expectedBalance)
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -124,6 +136,136 @@ fun HomeScreen(
             contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 14.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+        // Section 0: Day Navigation & Date Selector Bar (تبديل الأيام واختيار التقويم)
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("dashboard_date_switcher"),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isToday) Color(0xFF0F2B48) else Color(0xFF1E3A8A)
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Previous Day (RTL: Arrow right moves to previous day)
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.18f),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable { viewModel.shiftDashboardDate(-1) }
+                                .testTag("btn_prev_day")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = "اليوم السابق",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+
+                        // Date Center Capsule (click to open calendar)
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { showDatePicker = true }
+                                .testTag("btn_open_calendar")
+                                .padding(horizontal = 8.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarMonth,
+                                    contentDescription = "اختيار من التقويم",
+                                    tint = Color(0xFF38BDF8),
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = HijriDateUtil.getFormattedArabicWithDayOfWeek(activeDate),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp,
+                                    color = Color.White
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "الموافق هجرياً: ${HijriDateUtil.getHijriDateFromString(activeDate).formatted}",
+                                fontSize = 11.sp,
+                                color = Color(0xFFBAE6FD)
+                            )
+                        }
+
+                        // Next Day (RTL: Arrow left moves to next day)
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.18f),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clickable { viewModel.shiftDashboardDate(1) }
+                                .testTag("btn_next_day")
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                    contentDescription = "اليوم التالي",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (!isToday) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFFF59E0B)
+                            ) {
+                                Text(
+                                    text = "عرض أرشيف يوم سابق",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color.White,
+                                modifier = Modifier
+                                    .clickable { viewModel.resetDashboardDateToToday() }
+                                    .testTag("btn_reset_to_today")
+                            ) {
+                                Text(
+                                    text = "العودة لليوم الحالي ↩",
+                                    color = Color(0xFF0F2B48),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Section 1: Hero Action Card - بيع استمارة
         item {
             Card(
@@ -432,7 +574,7 @@ fun HomeScreen(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "معاملات اليوم",
+                            text = if (isToday) "معاملات اليوم" else "معاملات (${HijriDateUtil.formatArabicDate(activeDate)})",
                             fontWeight = FontWeight.Bold,
                             fontSize = 14.sp,
                             color = Color(0xFF0F172A)
@@ -449,11 +591,11 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        val newCount = todayTransactions.count { it.transactionType == "جديد" }
-                        val renewCount = todayTransactions.count { it.transactionType == "تجديد" }
-                        val lostCount = todayTransactions.count { it.transactionType == "بدل فاقد" }
-                        val damagedCount = todayTransactions.count { it.transactionType == "بدل تالف" }
-                        val totalFormsCount = todayTransactions.size
+                        val newCount = effectiveTransactions.count { it.transactionType == "جديد" }
+                        val renewCount = effectiveTransactions.count { it.transactionType == "تجديد" }
+                        val lostCount = effectiveTransactions.count { it.transactionType == "بدل فاقد" }
+                        val damagedCount = effectiveTransactions.count { it.transactionType == "بدل تالف" }
+                        val totalFormsCount = effectiveTransactions.size
 
                         OperationTypeBox(
                             label = "جديد",
@@ -505,8 +647,8 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Gender distribution bar
-                    val maleCount = todayTransactions.count { it.gender == "ذكر" }
-                    val femaleCount = todayTransactions.count { it.gender == "أنثى" }
+                    val maleCount = effectiveTransactions.count { it.gender == "ذكر" }
+                    val femaleCount = effectiveTransactions.count { it.gender == "أنثى" }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -556,7 +698,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "الإجمالي: ${todayTransactions.size}",
+                                text = "الإجمالي: ${effectiveTransactions.size}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)
@@ -675,7 +817,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "آخر العمليات",
+                                text = if (isToday) "استمارات اليوم" else "استمارات (${HijriDateUtil.formatArabicDate(activeDate)})",
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp,
                                 color = Color(0xFF0F172A)
@@ -721,7 +863,7 @@ fun HomeScreen(
                         }
                     }
 
-                    val displayList = if (todayTransactions.isNotEmpty()) todayTransactions.take(5) else allTransactions.take(5)
+                    val displayList = if (effectiveTransactions.isNotEmpty()) effectiveTransactions.take(10) else allTransactions.take(5)
 
                     if (displayList.isEmpty()) {
                         Column(
@@ -733,13 +875,13 @@ fun HomeScreen(
                             Text(text = "📝", fontSize = 28.sp)
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "لا توجد عمليات مسجلة حتى الآن",
+                                text = "لا توجد عمليات مسجلة لهذا التاريخ",
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF64748B)
                             )
                             Text(
-                                text = "اضغط على زر (بيع استمارة) بالأعلى لتسجيل أول استمارة",
+                                text = "اضغط على زر (بيع استمارة) بالأعلى لتسجيل استمارة جديدة",
                                 fontSize = 11.sp,
                                 color = Color(0xFF94A3B8)
                             )
@@ -753,11 +895,7 @@ fun HomeScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
-                                        PrintAndExportUtil.printTransactionReceipt(
-                                            context = context,
-                                            tx = tx,
-                                            directorateName = directorateName
-                                        )
+                                        viewModel.selectTxForDetail(tx)
                                     }
                                     .padding(horizontal = 8.dp, vertical = 9.dp),
                                 verticalAlignment = Alignment.CenterVertically
@@ -883,6 +1021,17 @@ fun HomeScreen(
                 showDebtsListDialog = false
                 viewModel.showAddDebt(true)
             }
+        )
+    }
+
+    if (showDatePicker) {
+        AppDatePickerDialog(
+            initialDateString = activeDate,
+            onDateSelected = { pickedDate ->
+                viewModel.setDashboardDate(pickedDate)
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
         )
     }
 }

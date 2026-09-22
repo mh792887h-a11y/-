@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Print
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
@@ -285,7 +286,7 @@ fun OperationsScreen(
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Button(
                             onClick = {
@@ -297,9 +298,24 @@ fun OperationsScreen(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = InfoBlue)
                         ) {
-                            Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("طباعة", fontSize = 12.sp)
+                            Icon(imageVector = Icons.Default.Print, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("PDF/طباعة", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.promptEditTx(tx)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = NavyPrimary)
+                        ) {
+                            Icon(imageVector = Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("تعديل", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
 
                         if (tx.status == "ACTIVE") {
@@ -308,12 +324,12 @@ fun OperationsScreen(
                                     viewModel.promptCancelTx(tx)
                                 },
                                 modifier = Modifier
-                                    .weight(1.1f)
+                                    .weight(0.9f)
                                     .height(46.dp),
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD97706))
                             ) {
-                                Text("إلغاء", fontSize = 12.sp)
+                                Text("إلغاء", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                             }
                         }
 
@@ -322,15 +338,30 @@ fun OperationsScreen(
                                 txToDelete = tx
                             },
                             modifier = Modifier
-                                .weight(1f)
+                                .weight(0.9f)
                                 .height(46.dp),
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = ExpenseRed)
                         ) {
-                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("حذف", fontSize = 12.sp)
+                            Icon(imageVector = Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("حذف", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                         }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFFF0FDF4),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "📄 يتم تصدير الإيصال بصيغة PDF قابلة للطباعة فوراً ولا يتم حفظ صور في ألبوم المعرض.",
+                            fontSize = 10.sp,
+                            color = Color(0xFF166534),
+                            modifier = Modifier.padding(6.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        )
                     }
                 }
             }

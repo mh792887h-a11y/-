@@ -71,6 +71,7 @@ import com.example.ui.dialogs.AddExpenseDialog
 import com.example.ui.dialogs.AddIncomeDialog
 import com.example.ui.dialogs.CancelTransactionConfirmDialog
 import com.example.ui.dialogs.DateInfoDialog
+import com.example.ui.dialogs.EditTransactionDialog
 import com.example.ui.dialogs.PayDebtDialog
 import com.example.ui.dialogs.PayDirectorDialog
 import com.example.ui.dialogs.ReceiptConfirmationDialog
@@ -129,6 +130,8 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
     val showAddDebt by viewModel.showAddDebtModal.collectAsState()
     val selectedDebtForPayment by viewModel.selectedDebtForPayment.collectAsState()
     val txToCancel by viewModel.txToCancel.collectAsState()
+    val txToEdit by viewModel.txToEdit.collectAsState()
+    val dashboardDate by viewModel.dashboardDate.collectAsState()
     val showActualCash by viewModel.showActualCashModal.collectAsState()
     val showCloseDailyConfirm by viewModel.showCloseDailyConfirmModal.collectAsState()
     val showDateInfo by viewModel.showDateInfoModal.collectAsState()
@@ -256,9 +259,35 @@ fun CivilFundApp(viewModel: CivilFundViewModel) {
         SellFormDialog(
             feeSettings = feeSettings,
             recentCitizenNames = recentNames,
+            initialDate = dashboardDate,
             onDismiss = { viewModel.showSellForm(false) },
             onSubmit = { citizen, formNum, recordNum, type, gender, notes, customGreg, customHijri ->
                 viewModel.sellForm(citizen, formNum, recordNum, type, gender, notes, customGreg, customHijri)
+            },
+            onBatchSubmit = { items, type, notes, customGreg, customHijri ->
+                viewModel.sellFormsBatch(items, type, notes, customGreg, customHijri)
+            }
+        )
+    }
+
+    // Edit Transaction Dialog
+    if (txToEdit != null) {
+        EditTransactionDialog(
+            transaction = txToEdit!!,
+            feeSettings = feeSettings,
+            onDismiss = { viewModel.promptEditTx(null) },
+            onSave = { txId, citizen, formNum, recordNum, type, gender, notes, gregDate, hijriDate ->
+                viewModel.updateTransaction(
+                    txId,
+                    citizen,
+                    formNum,
+                    recordNum,
+                    type,
+                    gender,
+                    notes,
+                    gregDate,
+                    hijriDate
+                )
             }
         )
     }

@@ -85,6 +85,9 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
     private val _selectedTxForDetail = MutableStateFlow<TransactionEntity?>(null)
     val selectedTxForDetail: StateFlow<TransactionEntity?> = _selectedTxForDetail.asStateFlow()
 
+    private val _txToEdit = MutableStateFlow<TransactionEntity?>(null)
+    val txToEdit: StateFlow<TransactionEntity?> = _txToEdit.asStateFlow()
+
     private val _txToCancel = MutableStateFlow<TransactionEntity?>(null)
     val txToCancel: StateFlow<TransactionEntity?> = _txToCancel.asStateFlow()
 
@@ -114,6 +117,18 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    // Dashboard Active Date (تبديل الأيام في الشاشة الرئيسية وعرض كافة بياناتها)
+    private val _dashboardDate = MutableStateFlow(todayDate)
+    val dashboardDate: StateFlow<String> = _dashboardDate.asStateFlow()
+
+    val dashboardClosing: StateFlow<DailyClosingEntity?> = _dashboardDate
+        .flatMapLatest { date -> repository.getDailyClosing(date) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val dashboardTransactions: StateFlow<List<TransactionEntity>> = _dashboardDate
+        .flatMapLatest { date -> repository.getTransactionsByDate(date) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // Date selection for Daily Sheet (عرض جميع الأيام)
     private val _selectedReportDate = MutableStateFlow(todayDate)
@@ -300,6 +315,26 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         _selectedReportDate.value = date
     }
 
+    fun setDashboardDate(date: String) {
+        _dashboardDate.value = date
+        _selectedReportDate.value = date
+    }
+
+    fun shiftDashboardDate(daysDelta: Int) {
+        val newDate = HijriDateUtil.shiftDays(_dashboardDate.value, daysDelta)
+        _dashboardDate.value = newDate
+        _selectedReportDate.value = newDate
+    }
+
+    fun resetDashboardDateToToday() {
+        _dashboardDate.value = todayDate
+        _selectedReportDate.value = todayDate
+    }
+
+    fun promptEditTx(tx: TransactionEntity?) {
+        _txToEdit.value = tx
+    }
+
     fun showPayDirector(show: Boolean) {
         _showPayDirectorModal.value = show
     }
@@ -429,6 +464,65 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
                 _snackbarMessage.value = "تم تسجيل العملية بنجاح برقم: ${tx.receiptNumber}"
             }.onFailure { err ->
                 _snackbarMessage.value = err.message ?: "تعذر حفظ العملية، حاول مرة أخرى."
+            }
+        }
+    }
+
+    fun sellFormsBatch(
+        items: List<CivilFundRepository.BatchFormItem>,
+        formType: String,
+        notes: String?,
+        customGregorianDate: String? = null,
+        customHijriDate: String? = null
+    ) {
+        viewModelScope.launch {
+            val dateToUse = customGregorianDate ?: _dashboardDate.value
+            val result = repository.sellFormsBatch(
+                items = items,
+                formType = formType,
+                notes = notes,
+                customGregorianDate = dateToUse,
+                customHijriDate = customHijriDate
+            )
+            result.onSuccess { txList ->
+                _showSellFormModal.value = false
+                _lastSavedReceipt.value = txList.lastOrNull()
+                _snackbarMessage.value = "تم بنجاح تسجيل ${txList.size} استمارات دفعة واحدة وتحديث الصندوق."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "فشل تسجيل الاستمارات."
+            }
+        }
+    }
+
+    fun updateTransaction(
+        transactionId: Long,
+        citizenName: String,
+        formNumber: String,
+        recordNumber: String,
+        transactionType: String,
+        gender: String,
+        notes: String?,
+        gregorianDate: String,
+        hijriDate: String
+    ) {
+        viewModelScope.launch {
+            val result = repository.updateTransaction(
+                transactionId = transactionId,
+                citizenName = citizenName,
+                formNumber = formNumber,
+                recordNumber = recordNumber,
+                transactionType = transactionType,
+                gender = gender,
+                notes = notes,
+                gregorianDate = gregorianDate,
+                hijriDate = hijriDate
+            )
+            result.onSuccess { updatedTx ->
+                _txToEdit.value = null
+                _selectedTxForDetail.value = updatedTx
+                _snackbarMessage.value = "تم حفظ تعديلات استمارة المواطن (${updatedTx.citizenName}) بنجاح."
+            }.onFailure { err ->
+                _snackbarMessage.value = err.message ?: "تعذر حفظ التعديلات."
             }
         }
     }
