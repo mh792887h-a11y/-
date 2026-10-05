@@ -266,12 +266,12 @@ fun HomeScreen(
             }
         }
 
-        // Section 1: Hero Action Card - بيع استمارة
+        // Section 1: Hero Action Card - تسجيل في كشف الاستمارات الرسمي
         item {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { viewModel.showSellForm(true) }
+                    .clickable { viewModel.navigateTo(AppScreen.DAILY_SHEET) }
                     .testTag("hero_sell_form_button"),
                 shape = RoundedCornerShape(16.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF0F52BA)),
@@ -296,7 +296,7 @@ fun HomeScreen(
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.Default.Badge,
-                                    contentDescription = "بيع استمارة",
+                                    contentDescription = "كشف الاستمارات الرسمي",
                                     tint = Color(0xFF0F52BA),
                                     modifier = Modifier.size(26.dp)
                                 )
@@ -307,15 +307,15 @@ fun HomeScreen(
 
                         Column {
                             Text(
-                                text = "بيع استمارة",
+                                text = "كشف وتسجيل الاستمارات الرسمي 📄",
                                 color = Color.White,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 18.sp
+                                fontSize = 17.sp
                             )
                             Spacer(modifier = Modifier.height(2.dp))
                             Text(
-                                text = "تسجيل استمارة جديدة أو تجديد أو بدل فاقد أو تالف",
-                                color = Color.White.copy(alpha = 0.88f),
+                                text = "تسجيل فوري بورقة الكشف (جديد، تجديد، بدل فاقد، تالف) وطباعتها",
+                                color = Color.White.copy(alpha = 0.9f),
                                 fontSize = 11.sp,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis

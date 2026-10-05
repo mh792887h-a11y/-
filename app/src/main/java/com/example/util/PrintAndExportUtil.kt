@@ -602,6 +602,289 @@ object PrintAndExportUtil {
         printHtml(context, html, "تقرير_مخصص_${HijriDateUtil.getTodayGregorianString()}")
     }
 
+    /**
+     * Prints the Official Yemeni Civil Status Daily Movement Sheet for Personal Application Forms
+     * (كشف الحركة اليومي للاستمارات الشخصية) exactly matching the official Ministry of Interior paper template.
+     */
+    fun printOfficialMovementSheet(
+        context: Context,
+        formType: String, // "جديد", "تجديد", "بدل فاقد", "بدل تالف"
+        gregorianDate: String,
+        hijriDate: String,
+        pageNumber: Int,
+        totalPages: Int,
+        pageTransactions: List<TransactionEntity>,
+        directorateName: String,
+        cashierName: String = "أمين الصندوق"
+    ) {
+        val pageSize = 30 // 15 rows on Right Side, 15 rows on Left Side
+        val halfSize = 15
+
+        // Right side items (first 15) and Left side items (next 15)
+        val rightItems = pageTransactions.take(halfSize)
+        val leftItems = pageTransactions.drop(halfSize).take(halfSize)
+
+        val tableRows = StringBuilder()
+        for (i in 0 until halfSize) {
+            val rightIndex = (pageNumber - 1) * pageSize + i + 1
+            val rightTx = rightItems.getOrNull(i)
+
+            val leftIndex = (pageNumber - 1) * pageSize + halfSize + i + 1
+            val leftTx = leftItems.getOrNull(i)
+
+            tableRows.append("""
+                <tr>
+                    <!-- Right Side Column Set -->
+                    <td class="col-num">$rightIndex</td>
+                    <td class="col-record">${rightTx?.recordNumber?.ifBlank { "-" } ?: ""}</td>
+                    <td class="col-form">${rightTx?.formNumber?.ifBlank { "-" } ?: ""}</td>
+                    <td class="col-name">${rightTx?.citizenName ?: ""}</td>
+                    <td class="col-sign">${if (rightTx != null) "${rightTx.timeString}" else ""}</td>
+
+                    <!-- Left Side Column Set -->
+                    <td class="col-num">$leftIndex</td>
+                    <td class="col-record">${leftTx?.recordNumber?.ifBlank { "-" } ?: ""}</td>
+                    <td class="col-form">${leftTx?.formNumber?.ifBlank { "-" } ?: ""}</td>
+                    <td class="col-name">${leftTx?.citizenName ?: ""}</td>
+                    <td class="col-sign">${if (leftTx != null) "${leftTx.timeString}" else ""}</td>
+                </tr>
+            """.trimIndent())
+        }
+
+        val html = """
+            <!DOCTYPE html>
+            <html dir="rtl" lang="ar">
+            <head>
+                <meta charset="UTF-8">
+                <title>كشف الحركة اليومي للاستمارات الشخصية</title>
+                <style>
+                    @page {
+                        size: A4 portrait;
+                        margin: 10mm 8mm 10mm 8mm;
+                    }
+                    * {
+                        box-sizing: border-box;
+                    }
+                    body {
+                        font-family: "Amiri", "Traditional Arabic", "Segoe UI", Tahoma, sans-serif;
+                        direction: rtl;
+                        text-align: right;
+                        margin: 0;
+                        padding: 0;
+                        color: #000;
+                        background: #fff;
+                        font-size: 11px;
+                        line-height: 1.2;
+                    }
+                    .sheet-container {
+                        width: 100%;
+                        border: 2px solid #000;
+                        padding: 10px 12px;
+                        min-height: 270mm;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                    }
+                    /* Official Header */
+                    .official-header {
+                        display: table;
+                        width: 100%;
+                        margin-bottom: 6px;
+                    }
+                    .header-right {
+                        display: table-cell;
+                        width: 32%;
+                        vertical-align: top;
+                        text-align: right;
+                        font-weight: bold;
+                        font-size: 11px;
+                    }
+                    .header-center {
+                        display: table-cell;
+                        width: 36%;
+                        vertical-align: top;
+                        text-align: center;
+                    }
+                    .header-left {
+                        display: table-cell;
+                        width: 32%;
+                        vertical-align: top;
+                        text-align: left;
+                        direction: ltr;
+                        font-size: 10px;
+                    }
+                    .header-left-inner {
+                        direction: rtl;
+                        text-align: right;
+                        display: inline-block;
+                    }
+                    .basmala {
+                        font-size: 13px;
+                        font-weight: bold;
+                        margin-bottom: 2px;
+                    }
+                    .eagle-emblem {
+                        font-size: 26px;
+                        line-height: 1;
+                        margin-bottom: 2px;
+                    }
+                    .sheet-title-box {
+                        text-align: center;
+                        margin: 6px 0 8px 0;
+                        border-top: 1px solid #000;
+                        border-bottom: 1px solid #000;
+                        padding: 4px 0;
+                    }
+                    .sheet-main-title {
+                        font-size: 14px;
+                        font-weight: bold;
+                        letter-spacing: 0.5px;
+                    }
+                    .type-highlight {
+                        font-weight: 900;
+                        text-decoration: underline;
+                        padding: 0 4px;
+                    }
+                    /* Official 2-Sided Table */
+                    table.official-table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        border: 1.5px solid #000;
+                        margin-top: 2px;
+                    }
+                    table.official-table th,
+                    table.official-table td {
+                        border: 1px solid #000;
+                        padding: 4px 3px;
+                        height: 24px;
+                        vertical-align: middle;
+                        text-align: center;
+                    }
+                    table.official-table th {
+                        background-color: #f2f2f2;
+                        font-weight: bold;
+                        font-size: 10px;
+                        line-height: 1.15;
+                    }
+                    .col-num { width: 4%; font-weight: bold; font-size: 9px; }
+                    .col-record { width: 11%; font-size: 10px; font-weight: 600; }
+                    .col-form { width: 11%; font-size: 10px; font-weight: 600; }
+                    .col-name { width: 44%; text-align: right !important; padding-right: 6px !important; font-size: 10.5px; font-weight: 500; }
+                    .col-sign { width: 30%; font-size: 9px; color: #333; }
+
+                    /* Official Signatures Footer */
+                    .official-footer {
+                        margin-top: 12px;
+                        padding-top: 6px;
+                        display: table;
+                        width: 100%;
+                    }
+                    .sign-col {
+                        display: table-cell;
+                        width: 33.33%;
+                        text-align: center;
+                        vertical-align: top;
+                        font-size: 11px;
+                        line-height: 1.6;
+                    }
+                    .sign-title {
+                        font-weight: bold;
+                        margin-bottom: 4px;
+                    }
+                    .page-badge {
+                        display: inline-block;
+                        border: 1px solid #000;
+                        padding: 1px 6px;
+                        font-size: 9px;
+                        font-weight: bold;
+                        margin-top: 2px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="sheet-container">
+                    <div>
+                        <!-- Header -->
+                        <div class="official-header">
+                            <div class="header-right">
+                                <div>الجمهورية اليمنية</div>
+                                <div>وزارة الداخلية</div>
+                                <div>مصلحة الأحوال المدنية والسجل المدني</div>
+                                <div style="margin-top: 2px;">فرع مديرية: <strong>$directorateName</strong></div>
+                            </div>
+                            <div class="header-center">
+                                <div class="basmala">بسم الله الرحمن الرحيم</div>
+                                <div class="eagle-emblem">🦅</div>
+                                <div style="font-size: 10px; font-weight: bold;">شعار الجمهورية اليمنية</div>
+                            </div>
+                            <div class="header-left">
+                                <div class="header-left-inner">
+                                    <div>الرقم: <strong>.............</strong></div>
+                                    <div>التاريخ: <strong>$gregorianDate م</strong></div>
+                                    <div>الموافق: <strong>$hijriDate</strong></div>
+                                    <div><span class="page-badge">ورقة رقم: $pageNumber من $totalPages</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="sheet-title-box">
+                            <div class="sheet-main-title">
+                                كشف الحركة اليومي للاستمارات الشخصية ( <span class="type-highlight">$formType</span> ) بمديـرية: <strong>$directorateName</strong>
+                            </div>
+                        </div>
+
+                        <!-- Official Table -->
+                        <table class="official-table">
+                            <thead>
+                                <tr>
+                                    <!-- Right Half Column Headers -->
+                                    <th class="col-num">م</th>
+                                    <th class="col-record">رقم القيد<br>التسلسلي</th>
+                                    <th class="col-form">رقم<br>الاستمارة</th>
+                                    <th class="col-name">الإســـــــــــــــــــــم</th>
+                                    <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+
+                                    <!-- Left Half Column Headers -->
+                                    <th class="col-num">م</th>
+                                    <th class="col-record">رقم القيد<br>التسلسلي</th>
+                                    <th class="col-form">رقم<br>الاستمارة</th>
+                                    <th class="col-name">الإســـــــــــــــــــــم</th>
+                                    <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                $tableRows
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Footer Signatures -->
+                    <div class="official-footer">
+                        <div class="sign-col">
+                            <div class="sign-title">أمين الصندوق</div>
+                            <div>الاسم / $cashierName</div>
+                            <div>التوقيع / ....................................</div>
+                        </div>
+                        <div class="sign-col">
+                            <div class="sign-title">الفني المختص باستلام البطائق وطباعتها</div>
+                            <div>الاسم / ....................................</div>
+                            <div>التوقيع / ....................................</div>
+                        </div>
+                        <div class="sign-col">
+                            <div class="sign-title">مدير فرع الأحوال المدنية بمديرية $directorateName</div>
+                            <div>الاسم / ....................................</div>
+                            <div>التوقيع / ....................................</div>
+                        </div>
+                    </div>
+                </div>
+            </body>
+            </html>
+        """.trimIndent()
+
+        printHtml(context, html, "كشف_حركة_${formType}_ورقة_${pageNumber}_$gregorianDate")
+    }
+
     private fun printHtml(context: Context, html: String, jobName: String) {
         val webView = WebView(context)
         webView.webViewClient = object : WebViewClient() {
