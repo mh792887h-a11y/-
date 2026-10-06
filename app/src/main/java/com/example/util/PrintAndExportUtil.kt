@@ -617,10 +617,10 @@ object PrintAndExportUtil {
         directorateName: String,
         cashierName: String = "أمين الصندوق"
     ) {
-        val pageSize = 30 // 15 rows on Right Side, 15 rows on Left Side
-        val halfSize = 15
+        val pageSize = 50 // 25 rows on Right Side, 25 rows on Left Side
+        val halfSize = 25
 
-        // Right side items (first 15) and Left side items (next 15)
+        // Right side items (first 25) and Left side items (next 25)
         val rightItems = pageTransactions.take(halfSize)
         val leftItems = pageTransactions.drop(halfSize).take(halfSize)
 
@@ -634,19 +634,19 @@ object PrintAndExportUtil {
 
             tableRows.append("""
                 <tr>
-                    <!-- Right Side Column Set -->
-                    <td class="col-num">$rightIndex</td>
-                    <td class="col-record">${rightTx?.recordNumber?.ifBlank { "-" } ?: ""}</td>
-                    <td class="col-form">${rightTx?.formNumber?.ifBlank { "-" } ?: ""}</td>
+                    <!-- Right Side Column Set (Exact order from scanned document) -->
+                    <td class="col-record">${rightTx?.recordNumber?.ifBlank { "" } ?: ""}</td>
+                    <td class="col-form">${rightTx?.formNumber?.ifBlank { "" } ?: ""}</td>
                     <td class="col-name">${rightTx?.citizenName ?: ""}</td>
                     <td class="col-sign">${if (rightTx != null) "${rightTx.timeString}" else ""}</td>
+                    <td class="col-num">$rightIndex</td>
 
-                    <!-- Left Side Column Set -->
-                    <td class="col-num">$leftIndex</td>
-                    <td class="col-record">${leftTx?.recordNumber?.ifBlank { "-" } ?: ""}</td>
-                    <td class="col-form">${leftTx?.formNumber?.ifBlank { "-" } ?: ""}</td>
+                    <!-- Left Side Column Set (Exact order from scanned document) -->
+                    <td class="col-record">${leftTx?.recordNumber?.ifBlank { "" } ?: ""}</td>
+                    <td class="col-form">${leftTx?.formNumber?.ifBlank { "" } ?: ""}</td>
                     <td class="col-name">${leftTx?.citizenName ?: ""}</td>
                     <td class="col-sign">${if (leftTx != null) "${leftTx.timeString}" else ""}</td>
+                    <td class="col-num">$leftIndex</td>
                 </tr>
             """.trimIndent())
         }
@@ -660,7 +660,7 @@ object PrintAndExportUtil {
                 <style>
                     @page {
                         size: A4 portrait;
-                        margin: 10mm 8mm 10mm 8mm;
+                        margin: 6mm 6mm 6mm 6mm;
                     }
                     * {
                         box-sizing: border-box;
@@ -673,41 +673,42 @@ object PrintAndExportUtil {
                         padding: 0;
                         color: #000;
                         background: #fff;
-                        font-size: 11px;
-                        line-height: 1.2;
+                        font-size: 10px;
+                        line-height: 1.15;
                     }
                     .sheet-container {
                         width: 100%;
                         border: 2px solid #000;
-                        padding: 10px 12px;
-                        min-height: 270mm;
+                        padding: 8px 10px;
+                        min-height: 282mm;
                         display: flex;
                         flex-direction: column;
                         justify-content: space-between;
                     }
-                    /* Official Header */
+                    /* Official Top Header */
                     .official-header {
                         display: table;
                         width: 100%;
-                        margin-bottom: 6px;
+                        margin-bottom: 4px;
                     }
                     .header-right {
                         display: table-cell;
-                        width: 32%;
+                        width: 33%;
                         vertical-align: top;
                         text-align: right;
                         font-weight: bold;
                         font-size: 11px;
+                        line-height: 1.35;
                     }
                     .header-center {
                         display: table-cell;
-                        width: 36%;
+                        width: 34%;
                         vertical-align: top;
                         text-align: center;
                     }
                     .header-left {
                         display: table-cell;
-                        width: 32%;
+                        width: 33%;
                         vertical-align: top;
                         text-align: left;
                         direction: ltr;
@@ -717,28 +718,27 @@ object PrintAndExportUtil {
                         direction: rtl;
                         text-align: right;
                         display: inline-block;
+                        line-height: 1.35;
                     }
                     .basmala {
-                        font-size: 13px;
+                        font-size: 12px;
                         font-weight: bold;
                         margin-bottom: 2px;
                     }
                     .eagle-emblem {
-                        font-size: 26px;
+                        font-size: 24px;
                         line-height: 1;
-                        margin-bottom: 2px;
+                        margin-bottom: 1px;
                     }
                     .sheet-title-box {
                         text-align: center;
-                        margin: 6px 0 8px 0;
-                        border-top: 1px solid #000;
-                        border-bottom: 1px solid #000;
-                        padding: 4px 0;
+                        margin: 4px 0 6px 0;
+                        padding: 2px 0;
                     }
                     .sheet-main-title {
-                        font-size: 14px;
+                        font-size: 13px;
                         font-weight: bold;
-                        letter-spacing: 0.5px;
+                        letter-spacing: 0.3px;
                     }
                     .type-highlight {
                         font-weight: 900;
@@ -755,27 +755,27 @@ object PrintAndExportUtil {
                     table.official-table th,
                     table.official-table td {
                         border: 1px solid #000;
-                        padding: 4px 3px;
-                        height: 24px;
+                        padding: 2px 2px;
+                        height: 20px;
                         vertical-align: middle;
                         text-align: center;
                     }
                     table.official-table th {
-                        background-color: #f2f2f2;
+                        background-color: #f5f5f5;
                         font-weight: bold;
-                        font-size: 10px;
-                        line-height: 1.15;
+                        font-size: 9px;
+                        line-height: 1.1;
                     }
-                    .col-num { width: 4%; font-weight: bold; font-size: 9px; }
-                    .col-record { width: 11%; font-size: 10px; font-weight: 600; }
-                    .col-form { width: 11%; font-size: 10px; font-weight: 600; }
-                    .col-name { width: 44%; text-align: right !important; padding-right: 6px !important; font-size: 10.5px; font-weight: 500; }
-                    .col-sign { width: 30%; font-size: 9px; color: #333; }
+                    .col-num { width: 4%; font-weight: bold; font-size: 8.5px; }
+                    .col-record { width: 10.5%; font-size: 9px; font-weight: 600; }
+                    .col-form { width: 10.5%; font-size: 9px; font-weight: 600; }
+                    .col-name { width: 43%; text-align: right !important; padding-right: 4px !important; font-size: 9.5px; font-weight: 500; }
+                    .col-sign { width: 28%; font-size: 8px; color: #333; }
 
                     /* Official Signatures Footer */
                     .official-footer {
-                        margin-top: 12px;
-                        padding-top: 6px;
+                        margin-top: 10px;
+                        padding-top: 4px;
                         display: table;
                         width: 100%;
                     }
@@ -784,20 +784,12 @@ object PrintAndExportUtil {
                         width: 33.33%;
                         text-align: center;
                         vertical-align: top;
-                        font-size: 11px;
+                        font-size: 10.5px;
                         line-height: 1.6;
                     }
                     .sign-title {
                         font-weight: bold;
-                        margin-bottom: 4px;
-                    }
-                    .page-badge {
-                        display: inline-block;
-                        border: 1px solid #000;
-                        padding: 1px 6px;
-                        font-size: 9px;
-                        font-weight: bold;
-                        margin-top: 2px;
+                        margin-bottom: 2px;
                     }
                 </style>
             </head>
@@ -807,22 +799,21 @@ object PrintAndExportUtil {
                         <!-- Header -->
                         <div class="official-header">
                             <div class="header-right">
-                                <div>الجمهورية اليمنية</div>
+                                <div style="font-size: 13px;">الجمهورية اليمنية</div>
                                 <div>وزارة الداخلية</div>
                                 <div>مصلحة الأحوال المدنية والسجل المدني</div>
-                                <div style="margin-top: 2px;">فرع مديرية: <strong>$directorateName</strong></div>
                             </div>
                             <div class="header-center">
                                 <div class="basmala">بسم الله الرحمن الرحيم</div>
                                 <div class="eagle-emblem">🦅</div>
-                                <div style="font-size: 10px; font-weight: bold;">شعار الجمهورية اليمنية</div>
+                                <div style="font-size: 9px; font-weight: bold;">شعار الجمهورية اليمنية</div>
                             </div>
                             <div class="header-left">
                                 <div class="header-left-inner">
-                                    <div>الرقم: <strong>.............</strong></div>
-                                    <div>التاريخ: <strong>$gregorianDate م</strong></div>
-                                    <div>الموافق: <strong>$hijriDate</strong></div>
-                                    <div><span class="page-badge">ورقة رقم: $pageNumber من $totalPages</span></div>
+                                    <div>الرقم : ....................</div>
+                                    <div>التاريخ : <strong>$gregorianDate م</strong></div>
+                                    <div>الموافق : <strong>$hijriDate</strong></div>
+                                    <div>المرفقات : ....................</div>
                                 </div>
                             </div>
                         </div>
@@ -838,19 +829,19 @@ object PrintAndExportUtil {
                         <table class="official-table">
                             <thead>
                                 <tr>
-                                    <!-- Right Half Column Headers -->
-                                    <th class="col-num">م</th>
+                                    <!-- Right Half Column Headers (Exact scanned document) -->
                                     <th class="col-record">رقم القيد<br>التسلسلي</th>
                                     <th class="col-form">رقم<br>الاستمارة</th>
-                                    <th class="col-name">الإســـــــــــــــــــــم</th>
+                                    <th class="col-name">الإســـــــــــ ـــــــــــم</th>
                                     <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+                                    <th class="col-num">م</th>
 
-                                    <!-- Left Half Column Headers -->
-                                    <th class="col-num">م</th>
+                                    <!-- Left Half Column Headers (Exact scanned document) -->
                                     <th class="col-record">رقم القيد<br>التسلسلي</th>
                                     <th class="col-form">رقم<br>الاستمارة</th>
-                                    <th class="col-name">الإســـــــــــــــــــــم</th>
+                                    <th class="col-name">الإســـــــــــ ـــــــــــم</th>
                                     <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+                                    <th class="col-num">م</th>
                                 </tr>
                             </thead>
                             <tbody>
