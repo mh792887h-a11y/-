@@ -90,9 +90,7 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val allTransactions by viewModel.allTransactions.collectAsState()
     val directorateName by viewModel.directorateName.collectAsState()
-    val allDebts by viewModel.debts.collectAsState()
     val totalDebts by viewModel.totalRemainingDebts.collectAsState()
 
     val activeDate by viewModel.dashboardDate.collectAsState()
@@ -109,13 +107,23 @@ fun HomeScreen(
     var isRefreshing by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    val openingBalance = effectiveClosing?.openingBalance ?: 0.0
-    val totalIncome = effectiveClosing?.totalIncome ?: effectiveTransactions.sumOf { it.fundShare }
-    val totalExpenses = effectiveClosing?.totalExpenses ?: 0.0
-    val netToday = effectiveClosing?.netToday ?: (totalIncome - totalExpenses)
-    val expectedBalance = effectiveClosing?.expectedBalance ?: (openingBalance + totalIncome - totalExpenses)
-    val actualBalance = effectiveClosing?.actualBalance ?: expectedBalance
-    val diff = effectiveClosing?.difference ?: (actualBalance - expectedBalance)
+    val openingBalance = remember(effectiveClosing) { effectiveClosing?.openingBalance ?: 0.0 }
+    val totalIncome = remember(effectiveClosing, effectiveTransactions) {
+        effectiveClosing?.totalIncome ?: effectiveTransactions.sumOf { it.fundShare }
+    }
+    val totalExpenses = remember(effectiveClosing) { effectiveClosing?.totalExpenses ?: 0.0 }
+    val netToday = remember(effectiveClosing, totalIncome, totalExpenses) {
+        effectiveClosing?.netToday ?: (totalIncome - totalExpenses)
+    }
+    val expectedBalance = remember(effectiveClosing, openingBalance, totalIncome, totalExpenses) {
+        effectiveClosing?.expectedBalance ?: (openingBalance + totalIncome - totalExpenses)
+    }
+    val actualBalance = remember(effectiveClosing, expectedBalance) {
+        effectiveClosing?.actualBalance ?: expectedBalance
+    }
+    val diff = remember(effectiveClosing, actualBalance, expectedBalance) {
+        effectiveClosing?.difference ?: (actualBalance - expectedBalance)
+    }
 
     PullToRefreshBox(
         isRefreshing = isRefreshing,
@@ -863,7 +871,7 @@ fun HomeScreen(
                         }
                     }
 
-                    val displayList = if (effectiveTransactions.isNotEmpty()) effectiveTransactions.take(10) else allTransactions.take(5)
+                    val displayList = effectiveTransactions.take(10)
 
                     if (displayList.isEmpty()) {
                         Column(
@@ -1005,8 +1013,9 @@ fun HomeScreen(
     }
 
     if (showDebtsListDialog) {
+        val currentDebts by viewModel.debts.collectAsState()
         DebtsListDialog(
-            debts = allDebts,
+            debts = currentDebts,
             totalDebts = totalDebts,
             directorateName = directorateName,
             onDismiss = { showDebtsListDialog = false },
