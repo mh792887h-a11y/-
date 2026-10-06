@@ -3,6 +3,7 @@ package com.example.ui.screens
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -24,11 +25,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
@@ -70,6 +68,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -77,11 +76,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.R
 import com.example.data.entity.TransactionEntity
 import com.example.ui.CivilFundViewModel
 import com.example.ui.dialogs.AppDatePickerDialog
 import com.example.ui.theme.ExpenseRed
-import com.example.ui.theme.IncomeGreen
 import com.example.util.HijriDateUtil
 import com.example.util.PrintAndExportUtil
 import kotlin.math.ceil
@@ -91,12 +90,10 @@ import kotlin.math.max
 private const val ROWS_PER_PAGE = 50
 private const val HALF_ROWS = 25
 
-// Government Green Paper Palette
-private val GovGreenDark = Color(0xFF1B5E20)
-private val GovGreenMedium = Color(0xFF2E7D32)
-private val GovGreenLight = Color(0xFFE8F5E9)
-private val GovGreenParchment = Color(0xFFF1F8F2)
-private val GovGreenBorder = Color(0xFF14532D)
+// Exact color palette matching the official scanned movement sheet image
+private val TableHeaderOlive = Color(0xFFAECF9B)
+private val GridBorderBlack = Color(0xFF000000)
+private val NavyBrand = Color(0xFF0F385A)
 
 @Composable
 fun DailySheetScreen(
@@ -187,52 +184,46 @@ fun DailySheetScreen(
     var txToEditState by remember { mutableStateOf<TransactionEntity?>(null) }
     var txToDeleteState by remember { mutableStateOf<TransactionEntity?>(null) }
 
-    val totalCategoryFormsCount = categoryTransactions.size
-
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFFF4F6F4))
+            .background(Color(0xFFE2E8F0))
             .testTag("official_daily_sheet_screen"),
-        contentPadding = PaddingValues(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         // ==========================================
-        // SECTION 1: TOP CONTROL & PRINT BAR
+        // SECTION 1: TOP CONTROL BAR (أوراق المعاملات والطباعة)
         // ==========================================
         item {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = GovGreenDark),
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = NavyBrand),
                 elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(12.dp)) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    // Row 1: Title & Print Button
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = "الورقة الخضراء الرسمية لكشف الحركة اليومي",
-                                    style = MaterialTheme.typography.titleMedium.copy(
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.White
-                                    )
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(text = "🦅", fontSize = 16.sp)
-                            }
                             Text(
-                                text = "نموذج مصلحة الأحوال المدنية المعتمد (50 خانة: 25 يمين + 25 يسار)",
+                                text = "كشف الحركة اليومي للاستمارات الشخصية",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                            )
+                            Text(
+                                text = "الورقة الرسمية المعتمدة (25 يمين + 25 يسار)",
                                 fontSize = 11.sp,
-                                color = Color(0xFFC8E6C9)
+                                color = Color(0xFFBAE6FD)
                             )
                         }
 
-                        // Print Official A4 Green Paper Button
                         Button(
                             onClick = {
                                 PrintAndExportUtil.printOfficialMovementSheet(
@@ -247,382 +238,126 @@ fun DailySheetScreen(
                                     cashierName = currentUser?.fullName ?: "أمين الصندوق"
                                 )
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                            colors = ButtonDefaults.buttonColors(containerColor = TableHeaderOlive),
                             shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                             modifier = Modifier.testTag("print_official_sheet_btn")
                         ) {
-                            Icon(imageVector = Icons.Default.Print, contentDescription = null, tint = Color.Black, modifier = Modifier.size(16.dp))
+                            Icon(imageVector = Icons.Default.Print, contentDescription = null, tint = Color.Black, modifier = Modifier.size(15.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("طباعة A4 الورقة الرسمية", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                            Text("طباعة A4 الورقة", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.Black)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
                     HorizontalDivider(color = Color.White.copy(alpha = 0.2f))
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "$formattedGregorianDate (الموافق: $hijriDate)",
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = Color(0xFFFFE082)
-                            )
-                            Text(
-                                text = "فرع مديرية: $directorateName | أمين الصندوق: ${currentUser?.fullName ?: "أمين الصندوق"}",
-                                fontSize = 10.5.sp,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = { showDatePickerDialog = true },
-                            shape = RoundedCornerShape(8.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(14.dp))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("تغيير اليوم", fontSize = 10.5.sp)
-                        }
-                    }
-                }
-            }
-        }
-
-        // ==========================================
-        // SECTION 2: CATEGORY TABS (أوراق مستقلة لكل نوع)
-        // ==========================================
-        item {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Column(modifier = Modifier.padding(8.dp)) {
-                    Text(
-                        text = "أوراق كشوفات المعاملات (ورقة كشف مستقلة لكل نوع):",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = GovGreenDark
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
+                    // Row 2: Category Tabs [جديد] [تجديد] [بدل فاقد] [بدل تالف]
                     val categories = listOf(
-                        Triple("جديد", "استمارات جديد", Color(0xFF1B5E20)),
-                        Triple("تجديد", "استمارات تجديد", Color(0xFF0284C7)),
-                        Triple("بدل فاقد", "استمارات فاقد", Color(0xFFD97706)),
-                        Triple("بدل تالف", "استمارات تالف", Color(0xFF7C3AED))
+                        Triple("جديد", "جديد", Color(0xFF15803D)),
+                        Triple("تجديد", "تجديد", Color(0xFF0284C7)),
+                        Triple("بدل فاقد", "فاقد", Color(0xFFD97706)),
+                        Triple("بدل تالف", "تالف", Color(0xFF7C3AED))
                     )
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        categories.forEach { (typeKey, title, typeColor) ->
+                        categories.forEach { (typeKey, shortTitle, badgeColor) ->
                             val isSelected = selectedFormType == typeKey
-                            val countForThisType = allDayTransactions.count { it.transactionType == typeKey && it.status == "ACTIVE" }
+                            val count = allDayTransactions.count { it.transactionType == typeKey && it.status == "ACTIVE" }
 
                             Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) typeColor else Color(0xFFF1F5F9),
-                                border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFCBD5E1)),
+                                shape = RoundedCornerShape(6.dp),
+                                color = if (isSelected) Color.White else Color.White.copy(alpha = 0.15f),
                                 modifier = Modifier
                                     .weight(1f)
                                     .clickable {
                                         selectedFormType = typeKey
                                         currentPageIndex = 1
                                     }
-                                    .testTag("tab_sheet_$typeKey")
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 2.dp),
+                                    modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        text = typeKey,
-                                        fontSize = 11.5.sp,
+                                        text = shortTitle,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else Color(0xFF1E293B)
+                                        color = if (isSelected) NavyBrand else Color.White
                                     )
                                     Text(
-                                        text = "$countForThisType استمارة",
-                                        fontSize = 9.5.sp,
+                                        text = "($count)",
+                                        fontSize = 9.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (isSelected) Color.White.copy(alpha = 0.9f) else Color(0xFF64748B)
+                                        color = if (isSelected) badgeColor else Color.White.copy(alpha = 0.8f)
                                     )
                                 }
                             }
                         }
                     }
-                }
-            }
-        }
 
-        // ==========================================
-        // SECTION 3: IN-SHEET DIRECT FAST WRITING (الكتابة المباشرة في الفراغات)
-        // ==========================================
-        item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("in_sheet_registration_box"),
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = GovGreenParchment),
-                border = BorderStroke(1.5.dp, GovGreenMedium),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(modifier = Modifier.padding(10.dp)) {
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Row 3: Page Navigation & Date
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Surface(
-                                shape = CircleShape,
-                                color = GovGreenDark,
-                                modifier = Modifier.size(22.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        imageVector = Icons.Default.FlashOn,
-                                        contentDescription = null,
-                                        tint = Color.White,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
-                            }
-                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "تدوين مباشر في ورقة ( $selectedFormType )",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = GovGreenDark
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFFC8E6C9),
-                            border = BorderStroke(1.dp, GovGreenDark)
-                        ) {
-                            Text(
-                                text = "السطر للتدوين: #$targetSlotNumber",
+                                text = "📄 ورقة $currentPageIndex من $calculatedTotalPages",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = GovGreenDark,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                color = Color(0xFFFFD54F)
                             )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Citizen Name Input
-                    OutlinedTextField(
-                        value = citizenNameInput,
-                        onValueChange = { citizenNameInput = it },
-                        label = { Text("اسم المواطن الرباعي *") },
-                        placeholder = { Text("اكتب الاسم الرباعي هنا...") },
-                        leadingIcon = {
-                            Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = GovGreenDark)
-                        },
-                        trailingIcon = {
-                            if (citizenNameInput.isNotEmpty()) {
-                                IconButton(onClick = { citizenNameInput = "" }) {
-                                    Icon(imageVector = Icons.Default.Clear, contentDescription = null)
-                                }
-                            }
-                        },
-                        singleLine = true,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .testTag("in_sheet_citizen_input"),
-                        shape = RoundedCornerShape(8.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = GovGreenDark,
-                            unfocusedBorderColor = GovGreenMedium,
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White
-                        ),
-                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OutlinedTextField(
-                            value = recordNumberInput,
-                            onValueChange = { recordNumberInput = it },
-                            label = { Text("رقم القيد") },
-                            placeholder = { Text("501") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("in_sheet_record_num"),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedBorderColor = GovGreenDark,
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
-                            )
-                        )
-
-                        OutlinedTextField(
-                            value = formNumberInput,
-                            onValueChange = { formNumberInput = it },
-                            label = { Text("رقم الاستمارة") },
-                            placeholder = { Text("1001") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            modifier = Modifier
-                                .weight(1f)
-                                .testTag("in_sheet_form_num"),
-                            shape = RoundedCornerShape(8.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedBorderColor = GovGreenDark,
-                                unfocusedBorderColor = Color(0xFFCBD5E1)
-                            )
-                        )
-
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (genderInput == "ذكر") Color(0xFFEFF6FF) else Color(0xFFFDF2F8),
-                            border = BorderStroke(1.dp, if (genderInput == "ذكر") Color(0xFF93C5FD) else Color(0xFFF472B6)),
-                            modifier = Modifier
-                                .height(52.dp)
-                                .clickable { genderInput = if (genderInput == "ذكر") "أنثى" else "ذكر" }
-                                .padding(horizontal = 2.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 10.dp)) {
-                                Text(
-                                    text = if (genderInput == "ذكر") "👨 ذكر" else "👩 أنثى",
-                                    fontSize = 11.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (genderInput == "ذكر") Color(0xFF1D4ED8) else Color(0xFFBE185D)
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    val canSave = citizenNameInput.isNotBlank() && !isSubmitting
-                    Button(
-                        onClick = {
-                            if (!canSave) return@Button
-                            isSubmitting = true
-
-                            val nameToSave = citizenNameInput.trim()
-                            val fNumToSave = formNumberInput.trim().ifBlank { "-" }
-                            val rNumToSave = recordNumberInput.trim().ifBlank { "-" }
-
-                            // Register form with showReceipt = false to prevent screen exit or modal disruption
-                            viewModel.sellForm(
-                                citizenName = nameToSave,
-                                formNumber = fNumToSave,
-                                recordNumber = rNumToSave,
-                                formTypeNameArabic = selectedFormType,
-                                gender = genderInput,
-                                notes = null,
-                                customGregorianDate = if (!isToday) selectedDate else null,
-                                customHijriDate = null,
-                                showReceipt = false
-                            )
-
-                            lastSubmittedMessage = "تم تدوين ($nameToSave) في السطر #$targetSlotNumber بنجاح! 🟢"
-
-                            // Clear citizen name for next record
-                            citizenNameInput = ""
-
-                            // Auto-increment form and record number for the next citizen
-                            val currentFormLong = fNumToSave.toLongOrNull()
-                            if (currentFormLong != null) {
-                                formNumberInput = (currentFormLong + 1).toString()
-                            }
-                            val currentRecLong = rNumToSave.toLongOrNull()
-                            if (currentRecLong != null) {
-                                recordNumberInput = (currentRecLong + 1).toString()
-                            }
-
-                            // Advance target slot
-                            targetSlotNumber++
-
-                            // If page 1 reaches 50 slots, auto move to page 2
-                            if (targetSlotNumber > currentPageIndex * ROWS_PER_PAGE) {
-                                currentPageIndex = ceil(targetSlotNumber.toDouble() / ROWS_PER_PAGE).toInt()
-                            }
-
-                            isSubmitting = false
-                        },
-                        enabled = canSave,
-                        colors = ButtonDefaults.buttonColors(containerColor = GovGreenDark),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(44.dp)
-                            .testTag("in_sheet_submit_btn")
-                    ) {
-                        if (isSubmitting) {
-                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
-                        } else {
-                            Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "تدوين وحفظ في الورقة ✍️ (السطر #$targetSlotNumber)",
-                                fontSize = 12.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                        }
-                    }
-
-                    // Success Feedback Badge
-                    AnimatedVisibility(visible = lastSubmittedMessage != null) {
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFFDCFCE7),
-                            border = BorderStroke(1.dp, Color(0xFF86EFAC)),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 6.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = lastSubmittedMessage ?: "",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF15803D)
-                                )
-                                IconButton(
-                                    onClick = { lastSubmittedMessage = null },
-                                    modifier = Modifier.size(18.dp)
+                            if (currentPageIndex > 1) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.clickable { currentPageIndex-- }
                                 ) {
-                                    Icon(imageVector = Icons.Default.Close, contentDescription = null, tint = Color(0xFF15803D), modifier = Modifier.size(12.dp))
+                                    Text("السابقة", fontSize = 9.5.sp, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                 }
+                                Spacer(modifier = Modifier.width(4.dp))
                             }
+                            if (currentPageIndex < calculatedTotalPages) {
+                                Surface(
+                                    shape = RoundedCornerShape(4.dp),
+                                    color = Color.White.copy(alpha = 0.2f),
+                                    modifier = Modifier.clickable { currentPageIndex++ }
+                                ) {
+                                    Text("التالية", fontSize = 9.5.sp, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                }
+                                Spacer(modifier = Modifier.width(4.dp))
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = Color.White.copy(alpha = 0.25f),
+                                modifier = Modifier.clickable {
+                                    currentPageIndex = calculatedTotalPages + 1
+                                    targetSlotNumber = (currentPageIndex - 1) * ROWS_PER_PAGE + 1
+                                }
+                            ) {
+                                Text("+ فتح ورقة", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+
+                        OutlinedButton(
+                            onClick = { showDatePickerDialog = true },
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
+                            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.4f)),
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.CalendarMonth, contentDescription = null, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(text = "$formattedGregorianDate", fontSize = 9.5.sp)
                         }
                     }
                 }
@@ -630,13 +365,16 @@ fun DailySheetScreen(
         }
 
         // ==========================================
-        // SECTION 4: PAPER PAGER (مراجعة الأوراق السابقة والجديدة)
+        // SECTION 2: FAST DIRECT IN-SHEET ENTRY BAR
         // ==========================================
         item {
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("in_sheet_registration_box"),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F8F2)),
+                border = BorderStroke(1.5.dp, Color(0xFF4A7C59)),
                 elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
             ) {
                 Column(modifier = Modifier.padding(8.dp)) {
@@ -647,72 +385,138 @@ fun DailySheetScreen(
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.Description,
+                                imageVector = Icons.Default.FlashOn,
                                 contentDescription = null,
-                                tint = GovGreenDark,
+                                tint = Color(0xFF2E7D32),
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "أوراق كشف ($selectedFormType):",
-                                fontSize = 11.sp,
+                                text = "تدوين في ورقة ( $selectedFormType ) - السطر المحدد: #$targetSlotNumber",
+                                fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = GovGreenDark
+                                color = Color(0xFF1B5E20)
                             )
                         }
 
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = GovGreenLight,
-                            border = BorderStroke(1.dp, GovGreenMedium),
-                            modifier = Modifier.clickable {
-                                currentPageIndex = calculatedTotalPages + 1
-                                targetSlotNumber = (currentPageIndex - 1) * ROWS_PER_PAGE + 1
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(imageVector = Icons.Default.NoteAdd, contentDescription = null, tint = GovGreenDark, modifier = Modifier.size(13.dp))
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text("+ فتح ورقة جديدة (50 خانة)", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                            }
+                        if (lastSubmittedMessage != null) {
+                            Text(
+                                text = lastSubmittedMessage ?: "",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF15803D)
+                            )
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        val maxPagesToShow = max(calculatedTotalPages, currentPageIndex)
-                        items(maxPagesToShow) { pageIdx ->
-                            val pageNum = pageIdx + 1
-                            val isSelected = pageNum == currentPageIndex
-                            val startItem = (pageNum - 1) * ROWS_PER_PAGE + 1
-                            val endItem = pageNum * ROWS_PER_PAGE
+                        OutlinedTextField(
+                            value = citizenNameInput,
+                            onValueChange = { citizenNameInput = it },
+                            label = { Text("الاسم الرباعي", fontSize = 10.sp) },
+                            singleLine = true,
+                            modifier = Modifier
+                                .weight(2f)
+                                .testTag("in_sheet_citizen_input"),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedBorderColor = Color(0xFF2E7D32),
+                                unfocusedBorderColor = Color(0xFF81C784)
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                        )
 
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = if (isSelected) GovGreenDark else Color(0xFFF8FAFC),
-                                border = if (isSelected) null else BorderStroke(1.dp, Color(0xFFCBD5E1)),
-                                modifier = Modifier
-                                    .clickable { currentPageIndex = pageNum }
-                                    .testTag("sheet_page_chip_$pageNum")
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "📄 ورقة $pageNum ($startItem-$endItem)",
-                                        fontSize = 10.5.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = if (isSelected) Color.White else Color(0xFF334155)
-                                    )
+                        OutlinedTextField(
+                            value = formNumberInput,
+                            onValueChange = { formNumberInput = it },
+                            label = { Text("رقم الاستمارة", fontSize = 9.sp) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                            modifier = Modifier
+                                .weight(1.1f)
+                                .testTag("in_sheet_form_num"),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = recordNumberInput,
+                            onValueChange = { recordNumberInput = it },
+                            label = { Text("رقم القيد", fontSize = 9.sp) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("in_sheet_record_num"),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White
+                            )
+                        )
+
+                        val canSave = citizenNameInput.isNotBlank() && !isSubmitting
+                        Button(
+                            onClick = {
+                                if (!canSave) return@Button
+                                isSubmitting = true
+
+                                val nameToSave = citizenNameInput.trim()
+                                val fNumToSave = formNumberInput.trim().ifBlank { "-" }
+                                val rNumToSave = recordNumberInput.trim().ifBlank { "-" }
+
+                                viewModel.sellForm(
+                                    citizenName = nameToSave,
+                                    formNumber = fNumToSave,
+                                    recordNumber = rNumToSave,
+                                    formTypeNameArabic = selectedFormType,
+                                    gender = genderInput,
+                                    notes = null,
+                                    customGregorianDate = if (!isToday) selectedDate else null,
+                                    customHijriDate = null,
+                                    showReceipt = false
+                                )
+
+                                lastSubmittedMessage = "تم تدوين #$targetSlotNumber بنجاح! ✓"
+                                citizenNameInput = ""
+
+                                val currentFormLong = fNumToSave.toLongOrNull()
+                                if (currentFormLong != null) {
+                                    formNumberInput = (currentFormLong + 1).toString()
                                 }
+                                val currentRecLong = rNumToSave.toLongOrNull()
+                                if (currentRecLong != null) {
+                                    recordNumberInput = (currentRecLong + 1).toString()
+                                }
+
+                                targetSlotNumber++
+                                if (targetSlotNumber > currentPageIndex * ROWS_PER_PAGE) {
+                                    currentPageIndex = ceil(targetSlotNumber.toDouble() / ROWS_PER_PAGE).toInt()
+                                }
+
+                                isSubmitting = false
+                            },
+                            enabled = canSave,
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1B5E20)),
+                            shape = RoundedCornerShape(6.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                            modifier = Modifier.height(48.dp)
+                        ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(14.dp))
+                            } else {
+                                Text("تدوين ✍️", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -721,10 +525,10 @@ fun DailySheetScreen(
         }
 
         // ==========================================
-        // SECTION 5: EXACT OFFICIAL GREEN PAPER VIEW
+        // SECTION 3: THE EXACT OFFICIAL GOVERNMENT PAPER AS SHOWN IN THE IMAGE
         // ==========================================
         item {
-            ExactOfficialGreenPaperView(
+            ExactScannedPaperSheetView(
                 formType = selectedFormType,
                 directorateName = directorateName,
                 gregorianDate = selectedDate,
@@ -772,8 +576,7 @@ fun DailySheetScreen(
                 Text(
                     text = "تعديل بيانات الاستمارة #${tx.formNumber}",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = GovGreenDark
+                    fontSize = 14.sp
                 )
             },
             text = {
@@ -822,7 +625,7 @@ fun DailySheetScreen(
                         )
                         txToEditState = null
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = GovGreenDark)
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyBrand)
                 ) {
                     Text("حفظ التعديل")
                 }
@@ -850,7 +653,7 @@ fun DailySheetScreen(
             },
             text = {
                 Text(
-                    text = "هل أنت متأكد من حذف استمارة (${tx.citizenName}) من الورقة؟ سيتم إلغاء أثرها من الصندوق مباشرة.",
+                    text = "هل تريد حذف استمارة (${tx.citizenName}) من الورقة؟ سيتم إلغاؤها من الصندوق فوراً.",
                     fontSize = 12.5.sp
                 )
             },
@@ -875,11 +678,15 @@ fun DailySheetScreen(
 }
 
 /**
- * Exact replica of the official scanned green paper document:
- * Header + 25 rows on right half + 25 rows on left half (50 slots total per sheet) + Signatures footer.
+ * EXACT Visual Component of the Official Movement Sheet Paper as shown in the user's uploaded screenshot:
+ * 1) Top Header: Calligraphy "الجمهورية اليمنية" + Basmala + Eagle + Seal & Metadata
+ * 2) Title: "كشف الحركة اليومي للاستمارات الشخصية ( ......... ) مديرية ........."
+ * 3) Olive Table Header: 10 Columns (5 right + 5 left)
+ * 4) 25 Rows (Right: 1-25, Left: 26-50)
+ * 5) Official 3-Column Footer: أمين الصندوق | الفني المختص | مدير فرع الأحوال
  */
 @Composable
-fun ExactOfficialGreenPaperView(
+fun ExactScannedPaperSheetView(
     formType: String,
     directorateName: String,
     gregorianDate: String,
@@ -895,172 +702,214 @@ fun ExactOfficialGreenPaperView(
 ) {
     val baseIndex = (pageNumber - 1) * ROWS_PER_PAGE
 
-    // View toggle: Side A (Right Half 1..25), Side B (Left Half 26..50), or Full Sheet (عرض كامل ↔)
-    var viewMode by remember { mutableStateOf("FULL") } // "FULL", "SIDE_A", "SIDE_B"
+    // View toggle: [عرض كامل للورقة ↔] | [النصف الأيمن 1-25] | [النصف الأيسر 26-50]
+    var viewMode by remember { mutableStateOf("FULL") }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(4.dp, RoundedCornerShape(4.dp))
-            .testTag("official_green_paper_canvas"),
-        shape = RoundedCornerShape(4.dp),
-        colors = CardDefaults.cardColors(containerColor = GovGreenParchment),
-        border = BorderStroke(2.5.dp, GovGreenBorder)
+            .shadow(3.dp, RoundedCornerShape(2.dp))
+            .testTag("exact_scanned_paper_container"),
+        shape = RoundedCornerShape(2.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.2.dp, GridBorderBlack)
     ) {
-        Column(modifier = Modifier.padding(6.dp)) {
-            // ==========================================
-            // OFFICIAL HEADER (الترويسة الرسمية المعتمدة)
-            // ==========================================
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 6.dp)
+        ) {
+            // View Mode Selector for Easy Viewing
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                // Right: Republic & Ministry
-                Column(modifier = Modifier.weight(1.1f)) {
-                    Text("الجمهورية اليمنية", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("وزارة الداخلية", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("مصلحة الأحوال المدنية والسجل المدني", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("فرع مديرية: $directorateName", fontSize = 8.5.sp, color = GovGreenMedium)
-                }
-
-                // Center: Emblem & Basmala
-                Column(
-                    modifier = Modifier.weight(1.2f),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("بسم الله الرحمن الرحيم", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text("🦅", fontSize = 22.sp)
-                }
-
-                // Left: Metadata
-                Column(
-                    modifier = Modifier.weight(1.1f),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    Text("الرقم : ....................", fontSize = 8.5.sp, color = GovGreenDark)
-                    Text("التاريخ : $gregorianDate م", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("الموافق : $hijriDate", fontSize = 8.5.sp, color = GovGreenDark)
-                    Text("المرفقات : ....................", fontSize = 8.5.sp, color = GovGreenDark)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // Main Paper Title Banner (Official Green Banner)
-            Surface(
-                shape = RoundedCornerShape(2.dp),
-                color = GovGreenDark,
-                border = BorderStroke(1.dp, Color(0xFF0F3817)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(
-                    text = "كشف الحركة اليومي للاستمارات الشخصية ( $formType ) بمديـرية $directorateName - ورقة ($pageNumber من $totalPages)",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            // View toggle: [ النصف الأيمن 1-25 ] | [ النصف الأيسر 26-50 ] | [ عرض الورقة كاملة ↔ ]
-            Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Surface(
                     shape = RoundedCornerShape(4.dp),
-                    color = if (viewMode == "SIDE_A") GovGreenDark else Color(0xFFE2E8F0),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { viewMode = "SIDE_A" }
-                ) {
-                    Text(
-                        text = "الجانب الأيمن (1-25)",
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (viewMode == "SIDE_A") Color.White else Color(0xFF334155),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (viewMode == "SIDE_B") GovGreenDark else Color(0xFFE2E8F0),
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { viewMode = "SIDE_B" }
-                ) {
-                    Text(
-                        text = "الجانب الأيسر (26-50)",
-                        fontSize = 9.5.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (viewMode == "SIDE_B") Color.White else Color(0xFF334155),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (viewMode == "FULL") GovGreenDark else Color(0xFFE2E8F0),
+                    color = if (viewMode == "FULL") Color(0xFF1E293B) else Color(0xFFF1F5F9),
+                    border = BorderStroke(0.5.dp, Color.Gray),
                     modifier = Modifier
                         .weight(1.2f)
                         .clickable { viewMode = "FULL" }
                 ) {
                     Text(
                         text = "عرض الورقة كاملة ↔",
-                        fontSize = 9.5.sp,
+                        fontSize = 9.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (viewMode == "FULL") Color.White else Color(0xFF334155),
+                        color = if (viewMode == "FULL") Color.White else Color.Black,
                         textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(vertical = 4.dp)
+                        modifier = Modifier.padding(vertical = 3.dp)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (viewMode == "RIGHT") Color(0xFF1E293B) else Color(0xFFF1F5F9),
+                    border = BorderStroke(0.5.dp, Color.Gray),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { viewMode = "RIGHT" }
+                ) {
+                    Text(
+                        text = "النصف الأيمن (1-25)",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (viewMode == "RIGHT") Color.White else Color.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 3.dp)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (viewMode == "LEFT") Color(0xFF1E293B) else Color(0xFFF1F5F9),
+                    border = BorderStroke(0.5.dp, Color.Gray),
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { viewMode = "LEFT" }
+                ) {
+                    Text(
+                        text = "النصف الأيسر (26-50)",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (viewMode == "LEFT") Color.White else Color.Black,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(vertical = 3.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            // ==========================================
+            // 1. OFFICIAL PAPER HEADER (الترويسة كما في الصورة المرفقة)
+            // ==========================================
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                // Right: Calligraphy Republic & Ministry
+                Column(
+                    modifier = Modifier.weight(1.1f),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    Text(
+                        text = "الجمهورية اليمنية",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "وزارة الداخلية",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "مصلحة الأحوال المدنية والسجل المدني",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Black
+                    )
+                }
 
+                // Center: Basmala + Eagle Coat of Arms
+                Column(
+                    modifier = Modifier.weight(1.1f),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "بسم الله الرحمن الرحيم",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_yemen_eagle),
+                        contentDescription = "شعار الجمهورية اليمنية",
+                        modifier = Modifier
+                            .height(30.dp)
+                            .width(55.dp)
+                    )
+                }
+
+                // Left: Seal + Dotted Metadata
+                Row(
+                    modifier = Modifier.weight(1.2f),
+                    horizontalArrangement = Arrangement.Start,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.ic_civil_status_seal),
+                        contentDescription = "ختم الأحوال المدنية",
+                        modifier = Modifier
+                            .size(28.dp)
+                            .padding(end = 4.dp)
+                    )
+                    Column {
+                        Text(text = "الرقــــــم : .................", fontSize = 8.sp, color = Color.Black)
+                        Text(text = "التاريـــــخ : $gregorianDate م", fontSize = 8.sp, fontWeight = FontWeight.SemiBold, color = Color.Black)
+                        Text(text = "الموافــــق : $hijriDate", fontSize = 7.5.sp, color = Color.Black)
+                        Text(text = "المرفقـــات : .................", fontSize = 8.sp, color = Color.Black)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(3.dp))
+
+            // ==========================================
+            // 2. MAIN DOCUMENT TITLE (العنوان كما في الصورة)
+            // ==========================================
+            Text(
+                text = "كشف الحركة اليومي للاستمارات الشخصية ( $formType ) مديرية $directorateName",
+                fontSize = 10.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.Black,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            // ==========================================
+            // 3. TABLE VIEW (10 أعمدة كما في الصورة تماماً)
+            // ==========================================
             if (viewMode == "FULL") {
-                // Full side-by-side table matching the document exactly with horizontal scroll
-                Box(modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
-                    Column(modifier = Modifier.width(630.dp)) {
-                        // Table Header Bar (Both Halves)
-                        Surface(
-                            color = GovGreenMedium,
-                            border = BorderStroke(1.dp, GovGreenDark),
-                            modifier = Modifier.fillMaxWidth()
+                // Wide side-by-side view with smooth horizontal scrolling
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                ) {
+                    Column(modifier = Modifier.width(620.dp)) {
+                        // Table Header Row with Olive-Green Background (#AECF9B)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(TableHeaderOlive)
+                                .border(BorderStroke(1.dp, GridBorderBlack)),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp, horizontal = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                // Right Half Headers
-                                Text(text = "رقم القيد", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                                Text(text = "رقم الاستمارة", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(58.dp), textAlign = TextAlign.Center)
-                                Text(text = "الإســـــــــــ ـــــــــــم", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(140.dp), textAlign = TextAlign.Right)
-                                Text(text = "تاريخ القيد/التوقيع", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(55.dp), textAlign = TextAlign.Center)
-                                Text(text = "م", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(18.dp), textAlign = TextAlign.Center)
+                            // RIGHT HALF HEADERS (Columns 1 to 5)
+                            TableHeaderCell(text = "رقم القيد\nالتسلسلي", width = 48.dp)
+                            TableHeaderCell(text = "رقم\nالاستمارة", width = 52.dp)
+                            TableHeaderCell(text = "الاســـــــــــــــــم", width = 135.dp)
+                            TableHeaderCell(text = "تاريخ القيد /\nتوقيع الفني المختص", width = 55.dp)
+                            TableHeaderCell(text = "م", width = 20.dp)
 
-                                Box(modifier = Modifier.width(2.dp).height(20.dp).background(Color.White))
-
-                                // Left Half Headers
-                                Text(text = "رقم القيد", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(48.dp), textAlign = TextAlign.Center)
-                                Text(text = "رقم الاستمارة", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(58.dp), textAlign = TextAlign.Center)
-                                Text(text = "الإســـــــــــ ـــــــــــم", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(140.dp), textAlign = TextAlign.Right)
-                                Text(text = "تاريخ القيد/التوقيع", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(55.dp), textAlign = TextAlign.Center)
-                                Text(text = "م", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(18.dp), textAlign = TextAlign.Center)
-                            }
+                            // LEFT HALF HEADERS (Columns 6 to 10)
+                            TableHeaderCell(text = "رقم القيد\nالتسلسلي", width = 48.dp)
+                            TableHeaderCell(text = "رقم\nالاستمارة", width = 52.dp)
+                            TableHeaderCell(text = "الاســـــــــــــــــم", width = 135.dp)
+                            TableHeaderCell(text = "تاريخ القيد /\nتوقيع الفني المختص", width = 55.dp)
+                            TableHeaderCell(text = "م", width = 20.dp)
                         }
 
-                        // Render 25 Rows (Right half: 1..25, Left half: 26..50)
+                        // 25 ROWS (Right: 1..25 | Left: 26..50)
                         for (r in 0 until HALF_ROWS) {
                             val rightSlot = baseIndex + r + 1
                             val rightTx = transactions.getOrNull(r)
@@ -1068,120 +917,175 @@ fun ExactOfficialGreenPaperView(
                             val leftSlot = baseIndex + HALF_ROWS + r + 1
                             val leftTx = transactions.getOrNull(HALF_ROWS + r)
 
-                            Surface(
-                                color = if (r % 2 == 0) Color.White else Color(0xFFF0FDF4),
-                                border = BorderStroke(0.5.dp, Color(0xFFA7F3D0)),
-                                modifier = Modifier.fillMaxWidth()
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack)),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 3.dp, horizontal = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    // Right Half Slot
-                                    GreenDualHalfCell(
-                                        slotNumber = rightSlot,
-                                        transaction = rightTx,
-                                        isSelected = selectedSlot == rightSlot,
-                                        onSelectSlot = { onSlotSelected(rightSlot) },
-                                        onEdit = { if (rightTx != null) onRowEdit(rightTx) }
-                                    )
+                                // Right Half Slot (1..25)
+                                ScannedHalfRowCells(
+                                    slotNumber = rightSlot,
+                                    transaction = rightTx,
+                                    isSelected = selectedSlot == rightSlot,
+                                    onClick = {
+                                        if (rightTx != null) onRowEdit(rightTx) else onSlotSelected(rightSlot)
+                                    }
+                                )
 
-                                    Box(modifier = Modifier.width(2.dp).height(22.dp).background(GovGreenDark))
-
-                                    // Left Half Slot
-                                    GreenDualHalfCell(
-                                        slotNumber = leftSlot,
-                                        transaction = leftTx,
-                                        isSelected = selectedSlot == leftSlot,
-                                        onSelectSlot = { onSlotSelected(leftSlot) },
-                                        onEdit = { if (leftTx != null) onRowEdit(leftTx) }
-                                    )
-                                }
+                                // Left Half Slot (26..50)
+                                ScannedHalfRowCells(
+                                    slotNumber = leftSlot,
+                                    transaction = leftTx,
+                                    isSelected = selectedSlot == leftSlot,
+                                    onClick = {
+                                        if (leftTx != null) onRowEdit(leftTx) else onSlotSelected(leftSlot)
+                                    }
+                                )
                             }
                         }
                     }
                 }
             } else {
-                // Single Column Focused View (Side A: 1-25 or Side B: 26-50)
-                val startRow = if (viewMode == "SIDE_A") 0 else HALF_ROWS
-                val endRow = if (viewMode == "SIDE_A") HALF_ROWS else ROWS_PER_PAGE
+                // Focused Single Column Set View (Right 1-25 or Left 26-50)
+                val startRow = if (viewMode == "RIGHT") 0 else HALF_ROWS
+                val endRow = if (viewMode == "RIGHT") HALF_ROWS else ROWS_PER_PAGE
 
-                Surface(
-                    color = GovGreenMedium,
-                    border = BorderStroke(1.dp, GovGreenDark),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Header
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 4.dp, horizontal = 2.dp),
+                            .background(TableHeaderOlive)
+                            .border(BorderStroke(1.dp, GridBorderBlack)),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "م", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
-                        Text(text = "رقم القيد", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(52.dp), textAlign = TextAlign.Center)
-                        Text(text = "رقم الاستمارة", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(62.dp), textAlign = TextAlign.Center)
-                        Text(text = "الإســـــــــــ ـــــــــــم", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1f), textAlign = TextAlign.Right)
-                        Text(text = "الإجراء / الوقت", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.width(65.dp), textAlign = TextAlign.Center)
+                        TableHeaderCell(text = "رقم القيد\nالتسلسلي", width = 55.dp)
+                        TableHeaderCell(text = "رقم\nالاستمارة", width = 58.dp)
+                        TableHeaderCell(text = "الاســـــــــــــــــم", width = 0.dp, weight = 1f)
+                        TableHeaderCell(text = "تاريخ القيد /\nتوقيع الفني", width = 60.dp)
+                        TableHeaderCell(text = "م", width = 24.dp)
                     }
-                }
 
-                for (i in startRow until endRow) {
-                    val slotNumber = baseIndex + i + 1
-                    val tx = transactions.getOrNull(i)
+                    for (i in startRow until endRow) {
+                        val slotNum = baseIndex + i + 1
+                        val tx = transactions.getOrNull(i)
 
-                    GreenSingleSlotRow(
-                        slotNumber = slotNumber,
-                        transaction = tx,
-                        isSelected = selectedSlot == slotNumber,
-                        onSelectSlot = { onSlotSelected(slotNumber) },
-                        onEdit = { if (tx != null) onRowEdit(tx) },
-                        onDelete = { if (tx != null) onRowDelete(tx) }
-                    )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(if (selectedSlot == slotNum) Color(0xFFDCFCE7) else Color.White)
+                                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                .clickable {
+                                    if (tx != null) onRowEdit(tx) else onSlotSelected(slotNum)
+                                }
+                                .padding(vertical = 1.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = tx?.recordNumber?.ifBlank { "" } ?: "",
+                                fontSize = 9.sp,
+                                modifier = Modifier
+                                    .width(55.dp)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                    .padding(vertical = 3.dp),
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = tx?.formNumber?.ifBlank { "" } ?: "",
+                                fontSize = 9.sp,
+                                modifier = Modifier
+                                    .width(58.dp)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                    .padding(vertical = 3.dp),
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = tx?.citizenName ?: "",
+                                fontSize = 9.5.sp,
+                                fontWeight = if (tx != null) FontWeight.SemiBold else FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                    .padding(vertical = 3.dp, horizontal = 4.dp),
+                                textAlign = TextAlign.Right
+                            )
+                            Text(
+                                text = tx?.timeString ?: "",
+                                fontSize = 8.sp,
+                                modifier = Modifier
+                                    .width(60.dp)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                    .padding(vertical = 3.dp),
+                                textAlign = TextAlign.Center
+                            )
+                            Text(
+                                text = "$slotNum",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .width(24.dp)
+                                    .border(BorderStroke(0.5.dp, GridBorderBlack))
+                                    .padding(vertical = 3.dp),
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-            HorizontalDivider(color = GovGreenDark, thickness = 1.dp)
-            Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // ==========================================
-            // OFFICIAL FOOTER SIGNATURES (التوقيعات الرسمية)
+            // 4. FOOTER SIGNATURES (التوقيعات الثلاثة كما في الصورة المرفقة تماماً)
             // ==========================================
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 10.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                // Right: Cashier
+                // Right: أمين الصندوق
                 Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("أمين الصندوق", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("الاسم / $cashierName", fontSize = 8.5.sp, color = Color(0xFF334155))
-                    Text("التوقيع / ....................", fontSize = 8.sp, color = Color(0xFF64748B))
+                    Text(text = "أمين الصندوق", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "الاسم / $cashierName", fontSize = 9.sp, color = Color.Black)
+                    Text(text = "التوقيع /", fontSize = 9.sp, color = Color.Black)
                 }
 
-                // Center: Technical Officer
+                // Center: الفني المختص باستلام البطائق وطباعتها
                 Column(
-                    modifier = Modifier.weight(1.1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1.2f)
                 ) {
-                    Text("الفني المختص باستلام البطائق وطباعتها", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = GovGreenDark, textAlign = TextAlign.Center)
-                    Text("الاسم / ....................", fontSize = 8.5.sp, color = Color(0xFF334155))
-                    Text("التوقيع / ....................", fontSize = 8.sp, color = Color(0xFF64748B))
+                    Text(
+                        text = "الفني المختص باستلام البطائق وطباعتها",
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "الاسم /", fontSize = 9.sp, color = Color.Black)
+                    Text(text = "التوقيع /", fontSize = 9.sp, color = Color.Black)
                 }
 
-                // Left: Directorate Manager
+                // Left: مدير فرع الأحوال المدنية بمديرية
                 Column(
-                    modifier = Modifier.weight(1f),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text("مدير فرع الأحوال بالمديرية", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = GovGreenDark)
-                    Text("الاسم / ....................", fontSize = 8.5.sp, color = Color(0xFF334155))
-                    Text("التوقيع / ....................", fontSize = 8.sp, color = Color(0xFF64748B))
+                    Text(text = "مدير فرع الأحوال المدنية بمديرية", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color.Black)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "الاسم /", fontSize = 9.sp, color = Color.Black)
+                    Text(text = "التوقيع /", fontSize = 9.sp, color = Color.Black)
                 }
             }
         }
@@ -1189,212 +1093,106 @@ fun ExactOfficialGreenPaperView(
 }
 
 @Composable
-fun GreenDualHalfCell(
+fun TableHeaderCell(
+    text: String,
+    width: androidx.compose.ui.unit.Dp,
+    weight: Float? = null
+) {
+    val mod = if (weight != null) {
+        Modifier
+            .border(BorderStroke(0.6.dp, GridBorderBlack))
+            .padding(vertical = 4.dp, horizontal = 1.dp)
+    } else {
+        Modifier
+            .width(width)
+            .border(BorderStroke(0.6.dp, GridBorderBlack))
+            .padding(vertical = 4.dp, horizontal = 1.dp)
+    }
+
+    Text(
+        text = text,
+        fontSize = 8.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.Black,
+        textAlign = TextAlign.Center,
+        lineHeight = 10.sp,
+        modifier = mod
+    )
+}
+
+@Composable
+fun ScannedHalfRowCells(
     slotNumber: Int,
     transaction: TransactionEntity?,
     isSelected: Boolean,
-    onSelectSlot: () -> Unit,
-    onEdit: () -> Unit
+    onClick: () -> Unit
 ) {
-    val isFilled = transaction != null
-
-    val bg = when {
-        isSelected -> Color(0xFFDCFCE7)
-        else -> Color.Transparent
-    }
+    val bg = if (isSelected) Color(0xFFDCFCE7) else Color.Transparent
 
     Row(
         modifier = Modifier
-            .width(312.dp)
+            .width(310.dp)
             .background(bg)
-            .clickable {
-                if (isFilled) onEdit() else onSelectSlot()
-            }
-            .padding(horizontal = 2.dp, vertical = 1.dp),
+            .clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // 1. رقم القيد التسلسلي
         Text(
-            text = transaction?.recordNumber?.ifBlank { "" } ?: "........",
+            text = transaction?.recordNumber?.ifBlank { "" } ?: "",
             fontSize = 8.5.sp,
-            fontWeight = if (isFilled) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (isFilled) GovGreenDark else Color(0xFF94A3B8),
-            modifier = Modifier.width(48.dp),
+            modifier = Modifier
+                .width(48.dp)
+                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                .padding(vertical = 2.dp),
             textAlign = TextAlign.Center
         )
 
+        // 2. رقم الاستمارة
         Text(
-            text = transaction?.formNumber?.ifBlank { "" } ?: "........",
+            text = transaction?.formNumber?.ifBlank { "" } ?: "",
+            fontSize = 8.5.sp,
+            modifier = Modifier
+                .width(52.dp)
+                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                .padding(vertical = 2.dp),
+            textAlign = TextAlign.Center
+        )
+
+        // 3. الاســـــــــم
+        Text(
+            text = transaction?.citizenName ?: "",
             fontSize = 9.sp,
-            fontWeight = if (isFilled) FontWeight.Bold else FontWeight.Normal,
-            color = if (isFilled) Color(0xFF0F172A) else Color(0xFF94A3B8),
-            modifier = Modifier.width(58.dp),
-            textAlign = TextAlign.Center
-        )
-
-        Text(
-            text = transaction?.citizenName ?: "........................................",
-            fontSize = 9.5.sp,
-            fontWeight = if (isFilled) FontWeight.Bold else FontWeight.Normal,
-            color = if (isFilled) Color(0xFF0F172A) else Color(0xFF94A3B8),
+            fontWeight = if (transaction != null) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.width(140.dp),
+            modifier = Modifier
+                .width(135.dp)
+                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                .padding(vertical = 2.dp, horizontal = 3.dp),
             textAlign = TextAlign.Right
         )
 
+        // 4. تاريخ القيد / توقيع الفني المختص
         Text(
-            text = transaction?.timeString ?: "✍️",
+            text = transaction?.timeString ?: "",
             fontSize = 7.5.sp,
-            color = if (isFilled) GovGreenDark else Color(0xFF94A3B8),
-            modifier = Modifier.width(55.dp),
+            modifier = Modifier
+                .width(55.dp)
+                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                .padding(vertical = 2.dp),
             textAlign = TextAlign.Center
         )
 
+        // 5. م (Sequential number)
         Text(
             text = "$slotNumber",
             fontSize = 8.5.sp,
             fontWeight = FontWeight.Bold,
-            color = GovGreenDark,
-            modifier = Modifier.width(18.dp),
+            modifier = Modifier
+                .width(20.dp)
+                .border(BorderStroke(0.5.dp, GridBorderBlack))
+                .padding(vertical = 2.dp),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-fun GreenSingleSlotRow(
-    slotNumber: Int,
-    transaction: TransactionEntity?,
-    isSelected: Boolean,
-    onSelectSlot: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
-    val isFilled = transaction != null
-    val isEven = slotNumber % 2 == 0
-
-    val rowBg = when {
-        isSelected -> Color(0xFFDCFCE7)
-        isFilled -> if (isEven) Color(0xFFF0FDF4) else Color.White
-        else -> if (isEven) Color(0xFFF8FAFC) else Color.White
-    }
-
-    Surface(
-        color = rowBg,
-        border = BorderStroke(if (isSelected) 1.5.dp else 0.5.dp, if (isSelected) GovGreenDark else Color(0xFFA7F3D0)),
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                if (isFilled) onEdit() else onSelectSlot()
-            }
-            .testTag("paper_slot_$slotNumber")
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$slotNumber",
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                color = GovGreenDark,
-                modifier = Modifier.width(24.dp),
-                textAlign = TextAlign.Center
-            )
-
-            if (isFilled) {
-                Text(
-                    text = transaction!!.recordNumber.ifBlank { "-" },
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = GovGreenDark,
-                    modifier = Modifier.width(52.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = transaction.formNumber.ifBlank { "-" },
-                    fontSize = 9.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
-                    modifier = Modifier.width(62.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = transaction.citizenName,
-                    fontSize = 10.5.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF0F172A),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Right
-                )
-
-                Row(
-                    modifier = Modifier.width(65.dp),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier.size(22.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = "تعديل",
-                            tint = GovGreenDark,
-                            modifier = Modifier.size(13.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier.size(22.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "حذف",
-                            tint = ExpenseRed,
-                            modifier = Modifier.size(13.dp)
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    text = ".......",
-                    fontSize = 8.5.sp,
-                    color = Color(0xFFCBD5E1),
-                    modifier = Modifier.width(52.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = ".......",
-                    fontSize = 8.5.sp,
-                    color = Color(0xFFCBD5E1),
-                    modifier = Modifier.width(62.dp),
-                    textAlign = TextAlign.Center
-                )
-
-                Text(
-                    text = if (isSelected) "👈 الخانة المحددة للتدوين (اكتب الاسم بالأعلى)" else "خانة فارغة (اضغط للكتابة)",
-                    fontSize = 9.5.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isSelected) GovGreenDark else Color(0xFF94A3B8),
-                    modifier = Modifier.weight(1f),
-                    textAlign = TextAlign.Right
-                )
-
-                Text(
-                    text = if (isSelected) "🟢" else "✍️",
-                    fontSize = 10.sp,
-                    modifier = Modifier.width(65.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
     }
 }

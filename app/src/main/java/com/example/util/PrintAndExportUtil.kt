@@ -667,18 +667,13 @@ object PrintAndExportUtil {
                     }
                     @media print {
                         body, .sheet-container {
-                            background-color: #edf7ed !important;
+                            background-color: #ffffff !important;
                             -webkit-print-color-adjust: exact !important;
                             print-color-adjust: exact !important;
                         }
-                        .sheet-title-box {
-                            background-color: #1b5e20 !important;
-                            color: #ffffff !important;
-                            -webkit-print-color-adjust: exact !important;
-                        }
                         table.official-table th {
-                            background-color: #2e7d32 !important;
-                            color: #ffffff !important;
+                            background-color: #aecf9b !important;
+                            color: #000000 !important;
                             -webkit-print-color-adjust: exact !important;
                         }
                     }
@@ -688,15 +683,15 @@ object PrintAndExportUtil {
                         text-align: right;
                         margin: 0;
                         padding: 0;
-                        color: #0f3817;
-                        background: #edf7ed;
+                        color: #000000;
+                        background: #ffffff;
                         font-size: 10px;
                         line-height: 1.15;
                     }
                     .sheet-container {
                         width: 100%;
-                        border: 3px double #1b5e20;
-                        background: #edf7ed;
+                        border: 1.5px solid #000000;
+                        background: #ffffff;
                         padding: 6px 8px;
                         min-height: 282mm;
                         display: flex;
@@ -707,27 +702,27 @@ object PrintAndExportUtil {
                     .official-header {
                         display: table;
                         width: 100%;
-                        margin-bottom: 3px;
+                        margin-bottom: 2px;
                     }
                     .header-right {
                         display: table-cell;
-                        width: 33%;
+                        width: 35%;
                         vertical-align: top;
                         text-align: right;
                         font-weight: bold;
                         font-size: 11px;
-                        color: #1b5e20;
+                        color: #000000;
                         line-height: 1.35;
                     }
                     .header-center {
                         display: table-cell;
-                        width: 34%;
+                        width: 30%;
                         vertical-align: top;
                         text-align: center;
                     }
                     .header-left {
                         display: table-cell;
-                        width: 33%;
+                        width: 35%;
                         vertical-align: top;
                         text-align: left;
                         direction: ltr;
@@ -738,91 +733,75 @@ object PrintAndExportUtil {
                         text-align: right;
                         display: inline-block;
                         line-height: 1.35;
-                        color: #1b5e20;
+                        color: #000000;
                     }
                     .basmala {
                         font-size: 12px;
                         font-weight: bold;
-                        color: #1b5e20;
+                        color: #000000;
                         margin-bottom: 2px;
                     }
                     .sheet-title-box {
                         text-align: center;
-                        margin: 3px 0 5px 0;
-                        padding: 3px 6px;
-                        background-color: #1b5e20;
-                        color: #ffffff;
-                        border: 1px solid #144a19;
-                        border-radius: 3px;
+                        margin: 4px 0 6px 0;
+                        padding: 2px 0;
                     }
                     .sheet-main-title {
-                        font-size: 12.5px;
+                        font-size: 13px;
                         font-weight: bold;
-                        letter-spacing: 0.3px;
-                        color: #ffffff;
-                    }
-                    .type-highlight {
-                        font-weight: 900;
-                        background: #ffd54f;
                         color: #000000;
-                        border-radius: 2px;
-                        padding: 0 6px;
                     }
                     /* Official 2-Sided Table */
                     table.official-table {
                         width: 100%;
                         border-collapse: collapse;
-                        border: 2px solid #1b5e20;
+                        border: 1.5px solid #000000;
                         margin-top: 2px;
                     }
                     table.official-table th,
                     table.official-table td {
-                        border: 1px solid #1b5e20;
+                        border: 1px solid #000000;
                         padding: 1.5px 2px;
                         height: 20px;
                         vertical-align: middle;
                         text-align: center;
                     }
                     table.official-table th {
-                        background-color: #2e7d32;
-                        color: #ffffff;
+                        background-color: #aecf9b;
+                        color: #000000;
                         font-weight: bold;
-                        font-size: 9px;
+                        font-size: 8.5px;
                         line-height: 1.1;
                     }
                     table.official-table tr:nth-child(even) {
                         background-color: #ffffff;
                     }
                     table.official-table tr:nth-child(odd) {
-                        background-color: #e4f4e5;
+                        background-color: #ffffff;
                     }
-                    .col-num { width: 4%; font-weight: bold; font-size: 8.5px; color: #1b5e20; }
+                    .col-num { width: 4%; font-weight: bold; font-size: 8.5px; color: #000000; }
                     .col-record { width: 10.5%; font-size: 9px; font-weight: 600; }
                     .col-form { width: 10.5%; font-size: 9px; font-weight: 600; }
                     .col-name { width: 43%; text-align: right !important; padding-right: 4px !important; font-size: 9.5px; font-weight: 600; }
-                    .col-sign { width: 28%; font-size: 8px; color: #2d5a32; }
+                    .col-sign { width: 28%; font-size: 8px; color: #333333; }
 
                     /* Official Signatures Footer */
                     .official-footer {
-                        margin-top: 8px;
+                        margin-top: 10px;
                         padding-top: 4px;
                         display: table;
                         width: 100%;
-                        border-top: 1px dashed #1b5e20;
                     }
                     .sign-col {
                         display: table-cell;
                         width: 33.33%;
                         text-align: center;
                         vertical-align: top;
-                        font-size: 10px;
-                        color: #1b5e20;
-                        line-height: 1.5;
+                        font-size: 10.5px;
+                        color: #000000;
+                        line-height: 1.6;
                     }
                     .sign-title {
-                        font-weight: bold;
-                        margin-bottom: 2px;
-                    }
                         font-weight: bold;
                         margin-bottom: 2px;
                     }
@@ -901,7 +880,7 @@ object PrintAndExportUtil {
                         <!-- Title -->
                         <div class="sheet-title-box">
                             <div class="sheet-main-title">
-                                كشف الحركة اليومي للاستمارات الشخصية ( <span class="type-highlight">$formType</span> ) بمديـرية: <strong>$directorateName</strong>
+                                كشف الحركة اليومي للاستمارات الشخصية ( $formType ) مديرية $directorateName
                             </div>
                         </div>
 
@@ -912,15 +891,15 @@ object PrintAndExportUtil {
                                     <!-- Right Half Column Headers (Exact scanned document) -->
                                     <th class="col-record">رقم القيد<br>التسلسلي</th>
                                     <th class="col-form">رقم<br>الاستمارة</th>
-                                    <th class="col-name">الإســـــــــــ ـــــــــــم</th>
-                                    <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+                                    <th class="col-name">الاســـــــــــــــــم</th>
+                                    <th class="col-sign">تاريخ القيد /<br>توقيع الفني المختص</th>
                                     <th class="col-num">م</th>
 
                                     <!-- Left Half Column Headers (Exact scanned document) -->
                                     <th class="col-record">رقم القيد<br>التسلسلي</th>
                                     <th class="col-form">رقم<br>الاستمارة</th>
-                                    <th class="col-name">الإســـــــــــ ـــــــــــم</th>
-                                    <th class="col-sign">تاريخ القيد +<br>توقيع الفني المختص</th>
+                                    <th class="col-name">الاســـــــــــــــــم</th>
+                                    <th class="col-sign">تاريخ القيد /<br>توقيع الفني المختص</th>
                                     <th class="col-num">م</th>
                                 </tr>
                             </thead>
