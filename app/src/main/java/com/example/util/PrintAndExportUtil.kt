@@ -660,10 +660,27 @@ object PrintAndExportUtil {
                 <style>
                     @page {
                         size: A4 portrait;
-                        margin: 6mm 6mm 6mm 6mm;
+                        margin: 5mm;
                     }
                     * {
                         box-sizing: border-box;
+                    }
+                    @media print {
+                        body, .sheet-container {
+                            background-color: #edf7ed !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        .sheet-title-box {
+                            background-color: #1b5e20 !important;
+                            color: #ffffff !important;
+                            -webkit-print-color-adjust: exact !important;
+                        }
+                        table.official-table th {
+                            background-color: #2e7d32 !important;
+                            color: #ffffff !important;
+                            -webkit-print-color-adjust: exact !important;
+                        }
                     }
                     body {
                         font-family: "Amiri", "Traditional Arabic", "Segoe UI", Tahoma, sans-serif;
@@ -671,15 +688,16 @@ object PrintAndExportUtil {
                         text-align: right;
                         margin: 0;
                         padding: 0;
-                        color: #000;
-                        background: #fff;
+                        color: #0f3817;
+                        background: #edf7ed;
                         font-size: 10px;
                         line-height: 1.15;
                     }
                     .sheet-container {
                         width: 100%;
-                        border: 2px solid #000;
-                        padding: 8px 10px;
+                        border: 3px double #1b5e20;
+                        background: #edf7ed;
+                        padding: 6px 8px;
                         min-height: 282mm;
                         display: flex;
                         flex-direction: column;
@@ -689,7 +707,7 @@ object PrintAndExportUtil {
                     .official-header {
                         display: table;
                         width: 100%;
-                        margin-bottom: 4px;
+                        margin-bottom: 3px;
                     }
                     .header-right {
                         display: table-cell;
@@ -698,6 +716,7 @@ object PrintAndExportUtil {
                         text-align: right;
                         font-weight: bold;
                         font-size: 11px;
+                        color: #1b5e20;
                         line-height: 1.35;
                     }
                     .header-center {
@@ -719,75 +738,91 @@ object PrintAndExportUtil {
                         text-align: right;
                         display: inline-block;
                         line-height: 1.35;
+                        color: #1b5e20;
                     }
                     .basmala {
                         font-size: 12px;
                         font-weight: bold;
+                        color: #1b5e20;
                         margin-bottom: 2px;
-                    }
-                    .eagle-emblem {
-                        font-size: 24px;
-                        line-height: 1;
-                        margin-bottom: 1px;
                     }
                     .sheet-title-box {
                         text-align: center;
-                        margin: 4px 0 6px 0;
-                        padding: 2px 0;
+                        margin: 3px 0 5px 0;
+                        padding: 3px 6px;
+                        background-color: #1b5e20;
+                        color: #ffffff;
+                        border: 1px solid #144a19;
+                        border-radius: 3px;
                     }
                     .sheet-main-title {
-                        font-size: 13px;
+                        font-size: 12.5px;
                         font-weight: bold;
                         letter-spacing: 0.3px;
+                        color: #ffffff;
                     }
                     .type-highlight {
                         font-weight: 900;
-                        text-decoration: underline;
-                        padding: 0 4px;
+                        background: #ffd54f;
+                        color: #000000;
+                        border-radius: 2px;
+                        padding: 0 6px;
                     }
                     /* Official 2-Sided Table */
                     table.official-table {
                         width: 100%;
                         border-collapse: collapse;
-                        border: 1.5px solid #000;
+                        border: 2px solid #1b5e20;
                         margin-top: 2px;
                     }
                     table.official-table th,
                     table.official-table td {
-                        border: 1px solid #000;
-                        padding: 2px 2px;
+                        border: 1px solid #1b5e20;
+                        padding: 1.5px 2px;
                         height: 20px;
                         vertical-align: middle;
                         text-align: center;
                     }
                     table.official-table th {
-                        background-color: #f5f5f5;
+                        background-color: #2e7d32;
+                        color: #ffffff;
                         font-weight: bold;
                         font-size: 9px;
                         line-height: 1.1;
                     }
-                    .col-num { width: 4%; font-weight: bold; font-size: 8.5px; }
+                    table.official-table tr:nth-child(even) {
+                        background-color: #ffffff;
+                    }
+                    table.official-table tr:nth-child(odd) {
+                        background-color: #e4f4e5;
+                    }
+                    .col-num { width: 4%; font-weight: bold; font-size: 8.5px; color: #1b5e20; }
                     .col-record { width: 10.5%; font-size: 9px; font-weight: 600; }
                     .col-form { width: 10.5%; font-size: 9px; font-weight: 600; }
-                    .col-name { width: 43%; text-align: right !important; padding-right: 4px !important; font-size: 9.5px; font-weight: 500; }
-                    .col-sign { width: 28%; font-size: 8px; color: #333; }
+                    .col-name { width: 43%; text-align: right !important; padding-right: 4px !important; font-size: 9.5px; font-weight: 600; }
+                    .col-sign { width: 28%; font-size: 8px; color: #2d5a32; }
 
                     /* Official Signatures Footer */
                     .official-footer {
-                        margin-top: 10px;
+                        margin-top: 8px;
                         padding-top: 4px;
                         display: table;
                         width: 100%;
+                        border-top: 1px dashed #1b5e20;
                     }
                     .sign-col {
                         display: table-cell;
                         width: 33.33%;
                         text-align: center;
                         vertical-align: top;
-                        font-size: 10.5px;
-                        line-height: 1.6;
+                        font-size: 10px;
+                        color: #1b5e20;
+                        line-height: 1.5;
                     }
                     .sign-title {
+                        font-weight: bold;
+                        margin-bottom: 2px;
+                    }
                         font-weight: bold;
                         margin-bottom: 2px;
                     }
@@ -799,21 +834,66 @@ object PrintAndExportUtil {
                         <!-- Header -->
                         <div class="official-header">
                             <div class="header-right">
-                                <div style="font-size: 13px;">الجمهورية اليمنية</div>
-                                <div>وزارة الداخلية</div>
-                                <div>مصلحة الأحوال المدنية والسجل المدني</div>
+                                <div style="font-size: 14px; font-weight: bold;">الجمهورية اليمنية</div>
+                                <div style="font-size: 12px; font-weight: bold;">وزارة الداخلية</div>
+                                <div style="font-size: 11px; font-weight: bold;">مصلحة الأحوال المدنية والسجل المدني</div>
                             </div>
                             <div class="header-center">
                                 <div class="basmala">بسم الله الرحمن الرحيم</div>
-                                <div class="eagle-emblem">🦅</div>
-                                <div style="font-size: 9px; font-weight: bold;">شعار الجمهورية اليمنية</div>
+                                <div style="margin: 2px 0;">
+                                    <!-- Official Yemeni Eagle Emblem SVG -->
+                                    <svg width="85" height="52" viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+                                        <!-- Left Wing -->
+                                        <path d="M60,42 C52,35 38,20 18,16 C12,15 8,18 10,22 C13,29 25,38 34,42 C24,43 14,46 12,50 C10,54 16,55 24,53 C33,51 44,48 55,47 Z" fill="#E5A93C" stroke="#B8860B" stroke-width="0.8"/>
+                                        <path d="M58,40 C48,32 32,22 19,20 C24,27 34,35 44,40 C35,42 22,46 20,49 C26,50 38,48 50,46 Z" fill="#F6C358"/>
+                                        <!-- Right Wing -->
+                                        <path d="M60,42 C68,35 82,20 102,16 C108,15 112,18 110,22 C107,29 95,38 86,42 C96,43 106,46 108,50 C110,54 104,55 96,53 C87,51 76,48 65,47 Z" fill="#E5A93C" stroke="#B8860B" stroke-width="0.8"/>
+                                        <path d="M62,40 C72,32 88,22 101,20 C96,27 86,35 76,40 C85,42 98,46 100,49 C94,50 82,48 70,46 Z" fill="#F6C358"/>
+                                        <!-- Head & Beak -->
+                                        <path d="M60,22 C56,18 57,10 60,6 C63,10 64,18 60,22 Z" fill="#F6C358" stroke="#B8860B" stroke-width="0.8"/>
+                                        <polygon points="61,12 65,14 61,16" fill="#D97706"/>
+                                        <circle cx="60" cy="12" r="1" fill="#000"/>
+                                        <!-- Left Flag -->
+                                        <line x1="38" y1="62" x2="82" y2="32" stroke="#B45309" stroke-width="1.5"/>
+                                        <path d="M34,34 C30,32 25,36 22,35 L22,38 C26,39 30,36 34,38 Z" fill="#CE1126"/>
+                                        <path d="M34,38 C30,36 26,39 22,38 L22,41 C26,42 30,39 34,41 Z" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="0.2"/>
+                                        <path d="M34,41 C30,39 26,42 22,41 L22,44 C26,45 30,42 34,44 Z" fill="#000000"/>
+                                        <!-- Right Flag -->
+                                        <line x1="82" y1="62" x2="38" y2="32" stroke="#B45309" stroke-width="1.5"/>
+                                        <path d="M86,34 C90,32 95,36 98,35 L98,38 C94,39 90,36 86,38 Z" fill="#CE1126"/>
+                                        <path d="M86,38 C90,36 94,39 98,38 L98,41 C94,42 90,39 86,41 Z" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="0.2"/>
+                                        <path d="M86,41 C90,39 94,42 98,41 L98,44 C94,45 90,42 86,44 Z" fill="#000000"/>
+                                        <!-- Chest Shield -->
+                                        <path d="M52,24 L68,24 C68,36 65,46 60,50 C55,46 52,36 52,24 Z" fill="#FFFFFF" stroke="#B8860B" stroke-width="1.2"/>
+                                        <path d="M53,38 C56,36 64,36 67,38 L66,45 C63,48 60,49 54,45 Z" fill="#0284C7"/>
+                                        <path d="M53,32 L67,32 L67,37 C64,36 56,36 53,37 Z" fill="#CA8A04"/>
+                                        <path d="M57,26 C59,28 61,28 63,26 C63,30 57,30 57,26 Z" fill="#15803D"/>
+                                        <circle cx="60" cy="29" r="1" fill="#DC2626"/>
+                                        <!-- Scroll -->
+                                        <path d="M44,56 C52,54 68,54 76,56 C74,60 68,61 60,61 C52,61 46,60 44,56 Z" fill="#FEF08A" stroke="#CA8A04" stroke-width="0.8"/>
+                                    </svg>
+                                </div>
                             </div>
                             <div class="header-left">
                                 <div class="header-left-inner">
-                                    <div>الرقم : ....................</div>
-                                    <div>التاريخ : <strong>$gregorianDate م</strong></div>
-                                    <div>الموافق : <strong>$hijriDate</strong></div>
-                                    <div>المرفقات : ....................</div>
+                                    <div style="display: flex; align-items: center; justify-content: flex-end; margin-bottom: 2px;">
+                                        <!-- Civil Status Authority Circular Seal SVG -->
+                                        <svg width="42" height="42" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg" style="margin-left: 8px;">
+                                            <circle cx="35" cy="35" r="31" fill="#F0F9FF" stroke="#0284C7" stroke-width="2"/>
+                                            <circle cx="35" cy="35" r="27" fill="none" stroke="#0369A1" stroke-width="1"/>
+                                            <path d="M23,32 C28,30 33,30 35,33 C37,30 42,30 47,32 L47,42 C42,40 37,40 35,43 C33,40 28,40 23,42 Z" fill="#BAE6FD" stroke="#0284C7" stroke-width="0.8"/>
+                                            <line x1="35" y1="18" x2="35" y2="32" stroke="#B45309" stroke-width="1.2"/>
+                                            <line x1="27" y1="22" x2="43" y2="22" stroke="#B45309" stroke-width="1.2"/>
+                                            <path d="M25,27 C27,29 29,29 31,27 Z" fill="#F59E0B"/>
+                                            <path d="M39,27 C41,29 43,29 45,27 Z" fill="#F59E0B"/>
+                                        </svg>
+                                        <div>
+                                            <div>الرقم : ....................</div>
+                                            <div>التاريخ : <strong>$gregorianDate م</strong></div>
+                                            <div>الموافق : <strong>$hijriDate</strong></div>
+                                            <div>المرفقات : ....................</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>

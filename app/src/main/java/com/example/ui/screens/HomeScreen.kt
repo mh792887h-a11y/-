@@ -125,16 +125,35 @@ fun HomeScreen(
         effectiveClosing?.difference ?: (actualBalance - expectedBalance)
     }
 
-    PullToRefreshBox(
-        isRefreshing = isRefreshing,
-        onRefresh = {
-            isRefreshing = true
-            coroutineScope.launch {
-                viewModel.refreshData()
-                delay(350)
-                isRefreshing = false
+    // Memoize transaction counts for maximum UI performance and zero lag
+    val transactionStats = remember(effectiveTransactions) {
+        var newCount = 0
+        var renewCount = 0
+        var lostCount = 0
+        var damagedCount = 0
+        var maleCount = 0
+        var femaleCount = 0
+        for (tx in effectiveTransactions) {
+            when (tx.transactionType) {
+                "جديد" -> newCount++
+                "تجديد" -> renewCount++
+                "بدل فاقد" -> lostCount++
+                "بدل تالف" -> damagedCount++
             }
-        },
+            if (tx.gender == "ذكر") maleCount++ else femaleCount++
+        }
+        object {
+            val n = newCount
+            val r = renewCount
+            val l = lostCount
+            val d = damagedCount
+            val m = maleCount
+            val f = femaleCount
+            val total = effectiveTransactions.size
+        }
+    }
+
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(Color(0xFFF1F5F9))
@@ -599,15 +618,9 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        val newCount = effectiveTransactions.count { it.transactionType == "جديد" }
-                        val renewCount = effectiveTransactions.count { it.transactionType == "تجديد" }
-                        val lostCount = effectiveTransactions.count { it.transactionType == "بدل فاقد" }
-                        val damagedCount = effectiveTransactions.count { it.transactionType == "بدل تالف" }
-                        val totalFormsCount = effectiveTransactions.size
-
                         OperationTypeBox(
                             label = "جديد",
-                            count = newCount,
+                            count = transactionStats.n,
                             icon = Icons.Default.Badge,
                             tint = Color(0xFF2563EB),
                             bg = Color(0xFFEFF6FF),
@@ -616,7 +629,7 @@ fun HomeScreen(
                         )
                         OperationTypeBox(
                             label = "تجديد",
-                            count = renewCount,
+                            count = transactionStats.r,
                             icon = Icons.Default.Autorenew,
                             tint = Color(0xFF16A34A),
                             bg = Color(0xFFF0FDF4),
@@ -625,7 +638,7 @@ fun HomeScreen(
                         )
                         OperationTypeBox(
                             label = "فاقد",
-                            count = lostCount,
+                            count = transactionStats.l,
                             icon = Icons.Default.Cancel,
                             tint = Color(0xFFDC2626),
                             bg = Color(0xFFFEF2F2),
@@ -634,7 +647,7 @@ fun HomeScreen(
                         )
                         OperationTypeBox(
                             label = "تالف",
-                            count = damagedCount,
+                            count = transactionStats.d,
                             icon = Icons.Default.Warning,
                             tint = Color(0xFFD97706),
                             bg = Color(0xFFFFFBEB),
@@ -643,7 +656,7 @@ fun HomeScreen(
                         )
                         OperationTypeBox(
                             label = "الإجمالي",
-                            count = totalFormsCount,
+                            count = transactionStats.total,
                             icon = Icons.Default.Groups,
                             tint = Color(0xFF475569),
                             bg = Color(0xFFF8FAFC),
@@ -655,8 +668,6 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // Gender distribution bar
-                    val maleCount = effectiveTransactions.count { it.gender == "ذكر" }
-                    val femaleCount = effectiveTransactions.count { it.gender == "أنثى" }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -674,7 +685,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "الذكور: $maleCount",
+                                text = "الذكور: ${transactionStats.m}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF334155)
@@ -690,7 +701,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "الإناث: $femaleCount",
+                                text = "الإناث: ${transactionStats.f}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Medium,
                                 color = Color(0xFF334155)
@@ -706,7 +717,7 @@ fun HomeScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "الإجمالي: ${effectiveTransactions.size}",
+                                text = "الإجمالي: ${transactionStats.total}",
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF0F172A)

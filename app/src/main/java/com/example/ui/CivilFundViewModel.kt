@@ -443,7 +443,8 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
         gender: String,
         notes: String?,
         customGregorianDate: String? = null,
-        customHijriDate: String? = null
+        customHijriDate: String? = null,
+        showReceipt: Boolean = true
     ) {
         if (citizenName.isBlank()) {
             _snackbarMessage.value = "يرجى كتابة اسم المواطن رباعي."
@@ -460,8 +461,10 @@ class CivilFundViewModel(application: Application) : AndroidViewModel(applicatio
             )
             result.onSuccess { tx ->
                 _showSellFormModal.value = false
-                _lastSavedReceipt.value = tx
-                _snackbarMessage.value = "تم تسجيل العملية بنجاح برقم: ${tx.receiptNumber}"
+                if (showReceipt) {
+                    _lastSavedReceipt.value = tx
+                }
+                _snackbarMessage.value = "تم تسجيل الاستمارة بنجاح في الكشف (إيصال #${tx.receiptNumber})"
             }.onFailure { err ->
                 _snackbarMessage.value = err.message ?: "تعذر حفظ العملية، حاول مرة أخرى."
             }
